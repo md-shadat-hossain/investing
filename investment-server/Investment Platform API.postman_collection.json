@@ -1,0 +1,3438 @@
+{
+  "info": {
+    "_postman_id": "1c13e043-805e-4ef5-a631-e0adab203238",
+    "name": "Investment Platform API",
+    "description": "Complete API collection for Investment Platform with 7-Level MLM Referral System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39875841",
+    "_collection_link": "https://go.postman.co/collection/39875841-1c13e043-805e-4ef5-a631-e0adab203238?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    // No tokens on registration, need to verify email first",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"sh543132@gmail.com\",\n    \"password\": \"1qazxsw2\",\n    \"firstName\": \"Shadat \",\n    \"lastName\": \"Hossain\"\n    // \"referralCode\": \"{{referralCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new user with optional referral code"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response body",
+                  "let response = pm.response.json();",
+                  "",
+                  "// Check if the response code is 200 (Login Successful)",
+                  "if (response.code === 200) {",
+                  "    // Extract the access token",
+                  "    let accessToken = response.data.attributes.tokens.access.token;",
+                  "    ",
+                  "    // Set the access token in a global variable",
+                  "    pm.globals.set(\"accessToken\", accessToken);",
+                  "    ",
+                  "    console.log(\"Access token set in global variable: userAccessToken\");",
+                  "} else {",
+                  "    console.log(\"Login failed: \" + response.message);",
+                  "}",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"sh543132@gmail.com\",\n    \"code\": \"212524\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-email"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response body",
+                  "let response = pm.response.json();",
+                  "",
+                  "// Check if the response code is 200 (Login Successful)",
+                  "if (response.code === 200) {",
+                  "    // Extract the access token",
+                  "    let accessToken = response.data.attributes.tokens.access.token;",
+                  "    ",
+                  "    // Set the access token in a global variable",
+                  "    pm.globals.set(\"accessToken\", accessToken);",
+                  "    ",
+                  "    console.log(\"Access token set in global variable: accessToken\");",
+                  "} else {",
+                  "    console.log(\"Login failed: \" + response.message);",
+                  "}",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"sh543132@gmail.com\", // tiram94043@sepole.com\n    \"password\": \"1qazxsw2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"NewPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"oldPassword\": \"Password123\",\n    \"newPassword\": \"NewPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"Password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/delete-me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "delete-me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/self/in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "self",
+                "in"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "type": "text"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "1234567890",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "123 Main St",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/self/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "self",
+                "update"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get My Wallet",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallet/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Investment Plans",
+      "item": [
+        {
+          "name": "Get Active Plans (Public)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Plans",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plan by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/:planId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                ":planId"
+              ],
+              "variable": [
+                {
+                  "key": "planId",
+                  "value": "697b1b12e02a5f04015c4b09"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Plan (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "// {\n//     \"name\": \"Gold Plan Updated\",\n//     \"description\": \"Medium term investment\",\n//     \"minDeposit\": 1000,\n//     \"maxDeposit\": 10000,\n//     \"dailyReturn\": 2.5,\n//     \"duration\": 30,\n//     \"totalReturn\": 75,\n//     \"isActive\": true,\n//     \"isPopular\": false\n// }\n\n\n{\n  \"name\": \"Gold Plan Test\",\n  \"description\": \"Premium investment plan with high returns for serious investors\",\n  \"minDeposit\": 1000,\n  \"maxDeposit\": 50000,\n  \"roi\": 5,             // ROI stands for Return on Investment\n  \"roiType\": \"daily\",   // enum: [\"daily\", \"weekly\", \"monthly\", \"total\"],\n  \"duration\": 30,\n  \"durationType\": \"days\", // enum: [\"hours\", \"days\", \"weeks\", \"months\"],\n  \"referralBonus\": 10,\n  \"isPopular\": true,\n  \"isActive\": true,\n  \"features\": [\n    \"24/7 Support\",\n    \"Instant Withdrawals\",\n    \"Capital Insurance\",\n    \"Daily Profit Updates\"\n  ]\n//   \"totalInvestors\": \"\",\n//   \"totalInvested\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "// {\n//     \"name\": \"Gold Plan Updated\",\n//     \"description\": \"Medium term investment\",\n//     \"minDeposit\": 1000,\n//     \"maxDeposit\": 10000,\n//     \"dailyReturn\": 2.5,\n//     \"duration\": 30,\n//     \"totalReturn\": 75,\n//     \"isActive\": true,\n//     \"isPopular\": false\n// }\n\n\n{\n  \"name\": \"Gold Plan Test\",\n  \"description\": \"Premium investment plan with high returns for serious investors\",\n  \"minDeposit\": 1000,\n  \"maxDeposit\": 50000,\n  \"roi\": 5,             // ROI stands for Return on Investment\n  \"roiType\": \"daily\",   // enum: [\"daily\", \"weekly\", \"monthly\", \"total\"],\n  \"duration\": 30,\n  \"durationType\": \"days\", // enum: [\"hours\", \"days\", \"weeks\", \"months\"],\n  \"referralBonus\": 10,\n  \"isPopular\": true,\n  \"isActive\": true,\n  \"features\": [\n    \"24/7 Support\",\n    \"Instant Withdrawals\",\n    \"Capital Insurance\",\n    \"Daily Profit Updates\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "plans"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "Content-Security-Policy",
+                  "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+                },
+                {
+                  "key": "Cross-Origin-Opener-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Cross-Origin-Resource-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Origin-Agent-Cluster",
+                  "value": "?1"
+                },
+                {
+                  "key": "Referrer-Policy",
+                  "value": "no-referrer"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15552000; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-DNS-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "SAMEORIGIN"
+                },
+                {
+                  "key": "X-Permitted-Cross-Domain-Policies",
+                  "value": "none"
+                },
+                {
+                  "key": "X-XSS-Protection",
+                  "value": "0"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "541"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"21d-KN93DsZVCXb3s6QzP5HBXtcpjbM\""
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "Date",
+                  "value": "Thu, 29 Jan 2026 09:23:29 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"code\": 201,\n    \"message\": \"Investment plan created successfully\",\n    \"data\": {\n        \"attributes\": {\n            \"name\": \"Gold Plan Test\",\n            \"description\": \"Premium investment plan with high returns for serious investors\",\n            \"minDeposit\": 1000,\n            \"maxDeposit\": 50000,\n            \"roi\": 5,\n            \"roiType\": \"daily\",\n            \"duration\": 30,\n            \"durationType\": \"days\",\n            \"referralBonus\": 10,\n            \"isPopular\": true,\n            \"isActive\": true,\n            \"features\": [\n                \"24/7 Support\",\n                \"Instant Withdrawals\",\n                \"Capital Insurance\",\n                \"Daily Profit Updates\"\n            ],\n            \"totalInvestors\": 0,\n            \"totalInvested\": 0,\n            \"createdAt\": \"2026-01-29T09:23:29.139Z\",\n            \"id\": \"697b2711aa6611d16fa45c1d\"\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Plan (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Gold Plan Updated\",\n    \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/plans/:planId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                ":planId"
+              ],
+              "variable": [
+                {
+                  "key": "planId",
+                  "value": "697b2711aa6611d16fa45c1d"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Gold Plan Updated\",\n    \"isActive\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/plans/:planId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "plans",
+                    ":planId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "697b2711aa6611d16fa45c1d"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "Content-Security-Policy",
+                  "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+                },
+                {
+                  "key": "Cross-Origin-Opener-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Cross-Origin-Resource-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Origin-Agent-Cluster",
+                  "value": "?1"
+                },
+                {
+                  "key": "Referrer-Policy",
+                  "value": "no-referrer"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15552000; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-DNS-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "SAMEORIGIN"
+                },
+                {
+                  "key": "X-Permitted-Cross-Domain-Policies",
+                  "value": "none"
+                },
+                {
+                  "key": "X-XSS-Protection",
+                  "value": "0"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "545"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"221-MpjLAg/5HxjUDCb5KLLhBIC4mZA\""
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "Date",
+                  "value": "Thu, 29 Jan 2026 09:24:53 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"code\": 200,\n    \"message\": \"Investment plan updated successfully\",\n    \"data\": {\n        \"attributes\": {\n            \"name\": \"Gold Plan Updated\",\n            \"description\": \"Premium investment plan with high returns for serious investors\",\n            \"minDeposit\": 1000,\n            \"maxDeposit\": 50000,\n            \"roi\": 5,\n            \"roiType\": \"daily\",\n            \"duration\": 30,\n            \"durationType\": \"days\",\n            \"referralBonus\": 10,\n            \"isPopular\": true,\n            \"isActive\": false,\n            \"features\": [\n                \"24/7 Support\",\n                \"Instant Withdrawals\",\n                \"Capital Insurance\",\n                \"Daily Profit Updates\"\n            ],\n            \"totalInvestors\": 0,\n            \"totalInvested\": 0,\n            \"createdAt\": \"2026-01-29T09:23:29.139Z\",\n            \"id\": \"697b2711aa6611d16fa45c1d\"\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Plan (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/plans/:planId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "plans",
+                ":planId"
+              ],
+              "variable": [
+                {
+                  "key": "planId",
+                  "value": "697b2711aa6611d16fa45c1d"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Investments",
+      "item": [
+        {
+          "name": "Create Investment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"planId\": \"697b1b12e02a5f04015c4b09\",\n    \"amount\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/investments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Investments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/investments/my?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments",
+                "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Investments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/investments/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Investment Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/investments/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Investment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/investments/:investmentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments",
+                ":investmentId"
+              ],
+              "variable": [
+                {
+                  "key": "investmentId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Investments (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/investments/admin/all?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "investments",
+                "admin",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Daily Profit Distribution (NEW)",
+      "item": [
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Get My Profit History",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/my-history?page=1&limit=10&sortBy=distributionDate:desc",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "my-history"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "distributionDate:desc"
+                    },
+                    {
+                      "key": "status",
+                      "value": "completed",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all profit distributions for the logged-in user"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Investment Profit History",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/investment/:investmentId/history?page=1&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "investment",
+                    ":investmentId",
+                    "history"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "investmentId",
+                      "value": "{{investmentId}}"
+                    }
+                  ]
+                },
+                "description": "Get profit distribution history for a specific investment"
+              },
+              "response": []
+            }
+          ],
+          "description": "User endpoints for viewing profit history"
+        },
+        {
+          "name": "Admin - Distribution Management",
+          "item": [
+            {
+              "name": "Run Manual Distribution (All)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/run-distribution",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "run-distribution"
+                  ]
+                },
+                "description": "Manually trigger daily profit distribution for ALL active investments (normally runs at midnight automatically)"
+              },
+              "response": []
+            },
+            {
+              "name": "Distribute Profit (Single Investment)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/investment/:investmentId/distribute",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "investment",
+                    ":investmentId",
+                    "distribute"
+                  ],
+                  "variable": [
+                    {
+                      "key": "investmentId",
+                      "value": "{{investmentId}}"
+                    }
+                  ]
+                },
+                "description": "Manually distribute profit for a specific investment"
+              },
+              "response": []
+            },
+            {
+              "name": "Pause Investment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"reason\": \"Under investigation for suspicious activity\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/investment/:investmentId/pause",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "investment",
+                    ":investmentId",
+                    "pause"
+                  ],
+                  "variable": [
+                    {
+                      "key": "investmentId",
+                      "value": "{{investmentId}}"
+                    }
+                  ]
+                },
+                "description": "Pause daily profit distribution for an investment. User will be notified."
+              },
+              "response": []
+            },
+            {
+              "name": "Resume Investment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/investment/:investmentId/resume",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "investment",
+                    ":investmentId",
+                    "resume"
+                  ],
+                  "variable": [
+                    {
+                      "key": "investmentId",
+                      "value": "{{investmentId}}"
+                    }
+                  ]
+                },
+                "description": "Resume profit distribution for a paused investment"
+              },
+              "response": []
+            },
+            {
+              "name": "Manual Profit Distribution (Bonus)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 1000,\n    \"reason\": \"Loyalty bonus - 1 year anniversary\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/investment/:investmentId/manual-distribution",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "investment",
+                    ":investmentId",
+                    "manual-distribution"
+                  ],
+                  "variable": [
+                    {
+                      "key": "investmentId",
+                      "value": "{{investmentId}}"
+                    }
+                  ]
+                },
+                "description": "Manually add profit to an investment (one-time bonus payment)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Profit Distributions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/all?page=1&limit=10&status=completed",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "all"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "status",
+                      "value": "completed"
+                    },
+                    {
+                      "key": "user",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "investment",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all profit distributions across the platform (admin view)"
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin controls for profit distribution"
+        },
+        {
+          "name": "Admin - Profit Adjustments",
+          "item": [
+            {
+              "name": "Create Profit Adjustment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('adjustmentId', jsonData.data._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"user\",\n    \"targetUser\": \"user_id_here\",\n    \"adjustmentType\": \"percentage\",\n    \"adjustmentValue\": 15,\n    \"startDate\": \"2024-01-01\",\n    \"endDate\": \"2024-12-31\",\n    \"reason\": \"VIP user - increased profit rate\",\n    \"priority\": 100,\n    \"notes\": \"Special promotion for top users\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments"
+                  ]
+                },
+                "description": "Create profit adjustment\n\nTypes: global, user, investment, plan\nAdjustment Types: percentage, fixed_amount, multiplier\n\nExamples:\n- Percentage: 15 (15% daily)\n- Fixed Amount: 500 ($500/day)\n- Multiplier: 1.5 (1.5× normal profit)"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Global Rate Boost",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"global\",\n    \"adjustmentType\": \"multiplier\",\n    \"adjustmentValue\": 1.5,\n    \"startDate\": \"2024-01-01\",\n    \"endDate\": \"2024-01-07\",\n    \"reason\": \"New Year promotion - 50% profit boost\",\n    \"priority\": 0,\n    \"notes\": \"Limited time offer for all users\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments"
+                  ]
+                },
+                "description": "Example: Global 50% profit boost for 7 days"
+              },
+              "response": []
+            },
+            {
+              "name": "Create VIP Fixed Rate",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"user\",\n    \"targetUser\": \"vip_user_id\",\n    \"adjustmentType\": \"fixed_amount\",\n    \"adjustmentValue\": 500,\n    \"startDate\": \"2024-01-01\",\n    \"endDate\": null,\n    \"reason\": \"VIP tier benefits - guaranteed $500 daily\",\n    \"priority\": 200,\n    \"notes\": \"Lifetime VIP member\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments"
+                  ]
+                },
+                "description": "Example: VIP user gets fixed $500/day regardless of investment amount"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Plan Rate Reduction",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"plan\",\n    \"targetPlan\": \"plan_id_here\",\n    \"adjustmentType\": \"percentage\",\n    \"adjustmentValue\": 5,\n    \"startDate\": \"2024-01-15\",\n    \"endDate\": null,\n    \"reason\": \"Market volatility - reduced plan returns\",\n    \"priority\": 50,\n    \"notes\": \"Temporary measure until market stabilizes\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments"
+                  ]
+                },
+                "description": "Example: Reduce all investments in a specific plan to 5% daily"
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Adjustments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments?page=1&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "type",
+                      "value": "global",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Adjustment by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments/:adjustmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments",
+                    ":adjustmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "adjustmentId",
+                      "value": "{{adjustmentId}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Adjustment",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"adjustmentValue\": 20,\n    \"endDate\": \"2024-12-31\",\n    \"notes\": \"Extended promotion\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments/:adjustmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments",
+                    ":adjustmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "adjustmentId",
+                      "value": "{{adjustmentId}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Toggle Adjustment Status",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments/:adjustmentId/toggle",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments",
+                    ":adjustmentId",
+                    "toggle"
+                  ],
+                  "variable": [
+                    {
+                      "key": "adjustmentId",
+                      "value": "{{adjustmentId}}"
+                    }
+                  ]
+                },
+                "description": "Activate or deactivate an adjustment (toggles isActive field)"
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Adjustment",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/profits/admin/adjustments/:adjustmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "profits",
+                    "admin",
+                    "adjustments",
+                    ":adjustmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "adjustmentId",
+                      "value": "{{adjustmentId}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin controls for adjusting profit rates\n\nAdjustment Types:\n- Global: Affects ALL investments\n- User: All investments of specific user\n- Investment: Specific single investment\n- Plan: All investments in a plan\n\nAdjustment Methods:\n- Percentage: Set exact daily % (e.g., 15%)\n- Fixed Amount: Set exact daily $ (e.g., $500/day)\n- Multiplier: Multiply normal profit (e.g., 1.5× or 2×)"
+        }
+      ],
+      "description": "NEW: Daily profit distribution system with admin controls\n\nFeatures:\n- Automatic daily profit distribution (runs at midnight)\n- Admin can adjust profit rates\n- Pause/resume investments\n- Manual bonus payments\n- Complete audit trail"
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get Active Payment Gateways",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways/active?purpose=deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                "active"
+              ],
+              "query": [
+                {
+                  "key": "purpose",
+                  "value": "deposit",
+                  "description": "Filter gateways by purpose"
+                }
+              ]
+            },
+            "description": "Get all active payment gateways available for deposits. This is a public endpoint that returns gateway details including wallet addresses, QR codes, and supported cryptocurrencies."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Deposit Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "amount",
+                  "value": "1000",
+                  "type": "text",
+                  "description": "Amount to deposit (number)"
+                },
+                {
+                  "key": "paymentGatewayId",
+                  "value": "gateway_id_here",
+                  "type": "text",
+                  "description": "Payment gateway ID (required)"
+                },
+                {
+                  "key": "txHash",
+                  "value": "your_transaction_id_here",
+                  "type": "text",
+                  "description": "User transaction ID/hash (required)"
+                },
+                {
+                  "key": "walletAddress",
+                  "value": "",
+                  "type": "text",
+                  "description": "Wallet address (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "proofImage",
+                  "type": "file",
+                  "src": [],
+                  "description": "Payment proof image (required)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "deposit"
+              ]
+            },
+            "description": "Request a wallet deposit by uploading payment proof. User submits transaction details including amount, payment gateway, transaction hash, and proof image. Admin approval required."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Withdrawal Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 500,\n    \"paymentMethod\": \"gateway_id_here\",\n    \"accountDetails\": {\n        \"accountNumber\": \"1234567890\",\n        \"accountName\": \"John Doe\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "withdraw"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/my?page=1&limit=10&type=deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "type",
+                  "value": "deposit"
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/:transactionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                ":transactionId"
+              ],
+              "variable": [
+                {
+                  "key": "transactionId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Transactions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/admin/all?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "admin",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Transactions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/admin/pending?type=deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "admin",
+                "pending"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "deposit"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Transaction (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"adminNote\": \"Verified payment proof\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/admin/:transactionId/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "admin",
+                ":transactionId",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "transactionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Approves transaction and triggers 7-level referral commissions for deposits"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Transaction (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Invalid payment proof\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/admin/:transactionId/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "admin",
+                ":transactionId",
+                "reject"
+              ],
+              "variable": [
+                {
+                  "key": "transactionId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Referral System (7 Levels)",
+      "item": [
+        {
+          "name": "Public",
+          "item": [
+            {
+              "name": "Validate Referral Code",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/validate/:code",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "validate",
+                    ":code"
+                  ],
+                  "variable": [
+                    {
+                      "key": "code",
+                      "value": "{{referralCode}}",
+                      "description": "Referral code to validate"
+                    }
+                  ]
+                },
+                "description": "Check if a referral code is valid before registration"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Commission Rates",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/commission-rates",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "commission-rates"
+                  ]
+                },
+                "description": "Get the 7-level commission structure:\nLevel 1: 8%\nLevel 2: 4%\nLevel 3: 3%\nLevel 4: 2%\nLevel 5: 1%\nLevel 6: 1%\nLevel 7: 1%"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Get My Referrals",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/my?page=1&limit=10&sortBy=createdAt:desc",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "my"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "createdAt:desc"
+                    }
+                  ]
+                },
+                "description": "Get paginated list of all your referrals across all 7 levels"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Referral Statistics",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/stats",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "stats"
+                  ]
+                },
+                "description": "Get comprehensive referral statistics:\n- Referral code and link\n- Total referrals count\n- Active vs pending referrals\n- Total earnings\n- Level breakdown (count, earnings for each level 1-7)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Team Network Tree",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/team-network",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "team-network"
+                  ]
+                },
+                "description": "Get hierarchical tree structure of your entire team network up to 7 levels deep. Shows:\n- Network tree with nested children\n- Team statistics (total members, active members, earnings)\n- Level distribution"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Commission Breakdown",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/commission-breakdown",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "commission-breakdown"
+                  ]
+                },
+                "description": "Get detailed earnings breakdown by each level (1-7):\n- Level number\n- Commission rate\n- Total members at that level\n- Active members\n- Total earnings from that level"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Get All Referrals",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/referrals/admin/all?page=1&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "referrals",
+                    "admin",
+                    "all"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "status",
+                      "value": "active",
+                      "disabled": true
+                    },
+                    {
+                      "key": "level",
+                      "value": "1",
+                      "description": "Filter by level 1-7",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "7-Level Multi-Level Marketing (MLM) Referral System\n\nCommission Structure:\n- Level 1 (Direct): 8%\n- Level 2: 4%\n- Level 3: 3%\n- Level 4: 2%\n- Level 5: 1%\n- Level 6: 1%\n- Level 7: 1%\n\nTotal: 20% commission distributed across all levels"
+    },
+    {
+      "name": "Payment Gateways",
+      "item": [
+        {
+          "name": "Get Active Gateways (Public)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                "active"
+              ],
+              "query": [
+                {
+                  "key": "purpose",
+                  "value": "deposit",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Gateways by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways/type/:type",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                "type",
+                ":type"
+              ],
+              "variable": [
+                {
+                  "key": "type",
+                  "value": "crypto",
+                  "description": " enum: [\"crypto\", \"bank\", \"payment_processor\"],"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Gateway by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways/:gatewayId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                ":gatewayId"
+              ],
+              "variable": [
+                {
+                  "key": "gatewayId",
+                  "value": "697b1b12e02a5f04015c4b0f"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Gateways (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/gateways?page=1&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "gateways"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "Content-Security-Policy",
+                  "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+                },
+                {
+                  "key": "Cross-Origin-Opener-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Cross-Origin-Resource-Policy",
+                  "value": "same-origin"
+                },
+                {
+                  "key": "Origin-Agent-Cluster",
+                  "value": "?1"
+                },
+                {
+                  "key": "Referrer-Policy",
+                  "value": "no-referrer"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15552000; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-DNS-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "SAMEORIGIN"
+                },
+                {
+                  "key": "X-Permitted-Cross-Domain-Policies",
+                  "value": "none"
+                },
+                {
+                  "key": "X-XSS-Protection",
+                  "value": "0"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"bf7-0v4KHoqELAKYXYerfIU4x4NMZqY\""
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Date",
+                  "value": "Thu, 29 Jan 2026 09:49:11 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"code\": 200,\n    \"message\": \"All payment gateways retrieved successfully\",\n    \"data\": {\n        \"attributes\": {\n            \"results\": [\n                {\n                    \"bankDetails\": {\n                        \"bankName\": null,\n                        \"accountNumber\": null,\n                        \"accountName\": null,\n                        \"routingNumber\": null,\n                        \"swiftCode\": null,\n                        \"iban\": null\n                    },\n                    \"name\": \"Bitcoin\",\n                    \"type\": \"crypto\",\n                    \"currency\": \"BTC\",\n                    \"symbol\": \"₿\",\n                    \"walletAddress\": \"bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh\",\n                    \"qrCode\": null,\n                    \"minDeposit\": 50,\n                    \"maxDeposit\": 100000,\n                    \"minWithdraw\": 50,\n                    \"maxWithdraw\": 50000,\n                    \"depositFee\": 0,\n                    \"depositFeeType\": \"percentage\",\n                    \"withdrawFee\": 1,\n                    \"withdrawFeeType\": \"percentage\",\n                    \"processingTime\": \"10-60 minutes\",\n                    \"instructions\": \"Send BTC to the wallet address above. Transaction will be confirmed after 2 network confirmations.\",\n                    \"icon\": null,\n                    \"isActive\": true,\n                    \"isDepositEnabled\": true,\n                    \"isWithdrawEnabled\": true,\n                    \"sortOrder\": 1,\n                    \"createdAt\": \"2026-01-29T08:32:18.550Z\",\n                    \"id\": \"697b1b12e02a5f04015c4b0f\"\n                },\n                {\n                    \"bankDetails\": {\n                        \"bankName\": null,\n                        \"accountNumber\": null,\n                        \"accountName\": null,\n                        \"routingNumber\": null,\n                        \"swiftCode\": null,\n                        \"iban\": null\n                    },\n                    \"name\": \"Ethereum\",\n                    \"type\": \"crypto\",\n                    \"currency\": \"ETH\",\n                    \"symbol\": \"Ξ\",\n                    \"walletAddress\": \"0x742d35Cc6634C0532925a3b844Bc9e7595f2bD73\",\n                    \"qrCode\": null,\n                    \"minDeposit\": 50,\n                    \"maxDeposit\": 100000,\n                    \"minWithdraw\": 50,\n                    \"maxWithdraw\": 50000,\n                    \"depositFee\": 0,\n                    \"depositFeeType\": \"percentage\",\n                    \"withdrawFee\": 1,\n                    \"withdrawFeeType\": \"percentage\",\n                    \"processingTime\": \"5-30 minutes\",\n                    \"instructions\": \"Send ETH to the wallet address above. Make sure to use the Ethereum mainnet.\",\n                    \"icon\": null,\n                    \"isActive\": true,\n                    \"isDepositEnabled\": true,\n                    \"isWithdrawEnabled\": true,\n                    \"sortOrder\": 2,\n                    \"createdAt\": \"2026-01-29T08:32:18.551Z\",\n                    \"id\": \"697b1b12e02a5f04015c4b10\"\n                },\n                {\n                    \"bankDetails\": {\n                        \"bankName\": null,\n                        \"accountNumber\": null,\n                        \"accountName\": null,\n                        \"routingNumber\": null,\n                        \"swiftCode\": null,\n                        \"iban\": null\n                    },\n                    \"name\": \"USDT (TRC20)\",\n                    \"type\": \"crypto\",\n                    \"currency\": \"USDT\",\n                    \"symbol\": \"₮\",\n                    \"walletAddress\": \"TJYsXvW3FZv7v4TbQi6v3D1y8TqQZfR2K9\",\n                    \"qrCode\": null,\n                    \"minDeposit\": 10,\n                    \"maxDeposit\": 100000,\n                    \"minWithdraw\": 10,\n                    \"maxWithdraw\": 50000,\n                    \"depositFee\": 0,\n                    \"depositFeeType\": \"percentage\",\n                    \"withdrawFee\": 1,\n                    \"withdrawFeeType\": \"fixed\",\n                    \"processingTime\": \"1-10 minutes\",\n                    \"instructions\": \"Send USDT using TRC20 network only. Other networks will not be credited.\",\n                    \"icon\": null,\n                    \"isActive\": true,\n                    \"isDepositEnabled\": true,\n                    \"isWithdrawEnabled\": true,\n                    \"sortOrder\": 3,\n                    \"createdAt\": \"2026-01-29T08:32:18.551Z\",\n                    \"id\": \"697b1b12e02a5f04015c4b11\"\n                },\n                {\n                    \"bankDetails\": {\n                        \"bankName\": \"Example Bank\",\n                        \"accountNumber\": \"1234567890\",\n                        \"accountName\": \"WealthFlow Investment Ltd\",\n                        \"routingNumber\": \"021000021\",\n                        \"swiftCode\": \"EXBKUS33\",\n                        \"iban\": null\n                    },\n                    \"name\": \"Bank Transfer\",\n                    \"type\": \"bank\",\n                    \"currency\": \"USD\",\n                    \"symbol\": \"$\",\n                    \"walletAddress\": null,\n                    \"qrCode\": null,\n                    \"minDeposit\": 100,\n                    \"maxDeposit\": 50000,\n                    \"minWithdraw\": 100,\n                    \"maxWithdraw\": 25000,\n                    \"depositFee\": 0,\n                    \"depositFeeType\": \"percentage\",\n                    \"withdrawFee\": 25,\n                    \"withdrawFeeType\": \"fixed\",\n                    \"processingTime\": \"1-3 business days\",\n                    \"instructions\": \"Use the reference code provided in your transaction details when making the transfer.\",\n                    \"icon\": null,\n                    \"isActive\": true,\n                    \"isDepositEnabled\": true,\n                    \"isWithdrawEnabled\": true,\n                    \"sortOrder\": 4,\n                    \"createdAt\": \"2026-01-29T08:32:18.551Z\",\n                    \"id\": \"697b1b12e02a5f04015c4b12\"\n                }\n            ],\n            \"page\": 1,\n            \"limit\": 10,\n            \"totalPages\": 1,\n            \"totalResults\": 4\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Gateway (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "// === 1. Crypto Gateway (Bitcoin)  🟢====\n\n// {\n//   \"name\": \"Bitcoin\",\n//   \"type\": \"crypto\",\n//   \"currency\": \"BTC\",\n//   \"symbol\": \"₿\",\n//   \"walletAddress\": \"bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh\",\n//   \"qrCode\": \"https://res.cloudinary.com/dklwcl6z8/image/upload/v1769680911/BTC_QR_code_h3dygp.jpg\",\n//   \"minDeposit\": 50,\n//   \"maxDeposit\": 100000,\n//   \"minWithdraw\": 20,\n//   \"maxWithdraw\": 50000,\n//   \"depositFee\": 0,\n//   \"depositFeeType\": \"percentage\",\n//   \"withdrawFee\": 1,\n//   \"withdrawFeeType\": \"percentage\",\n//   \"processingTime\": \"10-30 minutes\",\n//   \"instructions\": \"Send only BTC to this address. Minimum 2 confirmations required.\",\n//   \"icon\": \"https://cryptologos.cc/logos/bitcoin-btc-logo.png\",\n//   \"isActive\": true,\n//   \"isDepositEnabled\": true,\n//   \"isWithdrawEnabled\": true,\n//   \"sortOrder\": 1\n// }\n\n// ====== 2. Bank Transfer 🟢=======\n\n\n// {\n//   \"name\": \"Bank Transfer\",\n//   \"type\": \"bank\",\n//   \"currency\": \"USD\",\n//   \"symbol\": \"$\",\n//   \"bankDetails\": {\n//     \"bankName\": \"Chase Bank\",\n//     \"accountNumber\": \"123456789012\",\n//     \"accountName\": \"Investment Company LLC\",\n//     \"routingNumber\": \"021000021\",\n//     \"swiftCode\": \"CHASUS33\",\n//     \"iban\": \"US12345678901234567890\"\n//   },\n//   \"minDeposit\": 100,\n//   \"maxDeposit\": 1000000,\n//   \"minWithdraw\": 50,\n//   \"maxWithdraw\": 500000,\n//   \"depositFee\": 5,\n//   \"depositFeeType\": \"fixed\",\n//   \"withdrawFee\": 10,\n//   \"withdrawFeeType\": \"fixed\",\n//   \"processingTime\": \"1-3 business days\",\n//   \"instructions\": \"Include your account ID in the transfer reference. Wire transfers only.\",\n//   \"icon\": \"https://img.icons8.com/color/1200/chase-bank.jpg\",\n//   \"isActive\": true,\n//   \"isDepositEnabled\": true,\n//   \"isWithdrawEnabled\": true,\n//   \"sortOrder\": 3\n// }\n\n\n// ===== 3. Payment Processor (PayPal) 🟢=====\n\n\n{\n  \"name\": \"PayPal\",\n  \"type\": \"payment_processor\",\n  \"currency\": \"USD\",\n  \"symbol\": \"$\",\n  \"walletAddress\": \"shadathossan3500@gmail.com\",\n  \"minDeposit\": 10,\n  \"maxDeposit\": 10000,\n  \"minWithdraw\": 20,\n  \"maxWithdraw\": 5000,\n  \"depositFee\": 2.9,\n  \"depositFeeType\": \"percentage\",\n  \"withdrawFee\": 2,\n  \"withdrawFeeType\": \"percentage\",\n  \"processingTime\": \"Instant - 24 hours\",\n  \"instructions\": \"Send as Friends & Family to avoid extra fees.\",\n  \"icon\": \"https://upload.wikimedia.org/wikipedia/commons/b/b7/PayPal_Logo_Icon_2014.svg\",\n  \"isActive\": true,\n  \"isDepositEnabled\": true,\n  \"isWithdrawEnabled\": false,\n  \"sortOrder\": 4\n}\n\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gateways",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Gateway (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gateways/:gatewayId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                ":gatewayId"
+              ],
+              "variable": [
+                {
+                  "key": "gatewayId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Gateway Status (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gateways/:gatewayId/toggle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                ":gatewayId",
+                "toggle"
+              ],
+              "variable": [
+                {
+                  "key": "gatewayId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Gateway (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gateways/:gatewayId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gateways",
+                ":gatewayId"
+              ],
+              "variable": [
+                {
+                  "key": "gatewayId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Support Tickets",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"subject\": \"Cannot withdraw funds\",\n    \"message\": \"I'm having trouble withdrawing my funds. Please help.\",\n    \"category\": \"withdrawal\",\n    \"priority\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/my?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "open",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/:ticketId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                ":ticketId"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Reply to Ticket",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"message\": \"Still waiting for response...\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/:ticketId/reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                ":ticketId",
+                "reply"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rate Ticket",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"rating\": 5,\n    \"feedback\": \"Great support! Issue resolved quickly.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/:ticketId/rate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                ":ticketId",
+                "rate"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Tickets (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/admin/all?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                "admin",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket Stats (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/admin/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                "admin",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Ticket Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"resolved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/admin/:ticketId/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                "admin",
+                ":ticketId",
+                "status"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Ticket (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"adminId\": \"admin_user_id\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/admin/:ticketId/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tickets",
+                "admin",
+                ":ticketId",
+                "assign"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?limit=20&skip=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "status",
+                  "value": "unread",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "unread-count"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/:notificationId/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                ":notificationId",
+                "read"
+              ],
+              "variable": [
+                {
+                  "key": "notificationId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/mark-all-read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "mark-all-read"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/:notificationId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                ":notificationId"
+              ],
+              "variable": [
+                {
+                  "key": "notificationId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete All Notifications",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send to User (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"user_id_here\",\n    \"title\": \"Important Update\",\n    \"content\": \"Your withdrawal has been approved\",\n    \"type\": \"transaction\",\n    \"priority\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/admin/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "admin",
+                "send"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Broadcast to All (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"System Maintenance\",\n    \"content\": \"The platform will be under maintenance tomorrow\",\n    \"type\": \"system\",\n    \"priority\": \"medium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/admin/broadcast",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "admin",
+                "broadcast"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recent Activities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/activities?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "role",
+                  "value": "user",
+                  "disabled": true
+                },
+                {
+                  "key": "isBlocked",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Block/Unblock User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Suspicious activity detected\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "block"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update KYC Status",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"verified\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "kyc"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add User Balance",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 1000,\n    \"reason\": \"Bonus for top referrer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/add-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "add-balance"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deduct User Balance",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 500,\n    \"reason\": \"Penalty for violation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/deduct-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "deduct-balance"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "referralCode",
+      "value": ""
+    }
+  ]
+}

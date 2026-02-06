@@ -1,0 +1,135 @@
+const { Investment, InvestmentPlan } = require("../models");
+const walletService = require("./wallet.service");
+const notificationService = require("./notification.service");
+const profitDistributionService = require("./profitDistribution.service");
+
+/**
+ * Process completed investments
+ * This should be run periodically (e.g., every hour)
+ */
+const processCompletedInvestments = async () => {
+  try {
+    const now = new Date();
+    const completedInvestments = await Investment.find({
+      status: "active",
+      endDate: { $lte: now },
+    }).populate("plan user");
+
+    let processedCount = 0;
+
+    for (const investment of completedInvestments) {
+      try {
+        // Calculate total return (principal + profit)
+        const totalReturn = investment.amount + investment.expectedProfit;
+
+        // Add to user's wallet
+        await walletService.addProfit(investment.user._id, totalReturn);
+
+        // Update investment status
+        investment.status = "completed";
+        investment.earnedProfit = investment.expectedProfit;
+        await investment.save();
+
+        // Send notification to user
+        await notificationService.sendToUser(
+          investment.user._id,
+          notificationService.templates.investmentCompleted(
+            investment.plan.name,
+            investment.expectedProfit
+          ).title,
+          notificationService.templates.investmentCompleted(
+            investment.plan.name,
+            investment.expectedProfit
+          ).content,
+          "investment"
+        );
+
+        processedCount++;
+        console.log(`Processed investment ${investment._id} for user ${investment.user.email}`);
+      } catch (error) {
+        console.error(`Error processing investment ${investment._id}:`, error);
+      }
+    }
+
+    if (processedCount > 0) {
+      console.log(`Processed ${processedCount} completed investments`);
+    }
+
+    return processedCount;
+  } catch (error) {
+    console.error("Error in processCompletedInvestments:", error);
+    throw error;
+  }
+};
+
+/**
+ * Process daily profits for active investments
+ * This distributes daily ROI to users (uses new profit distribution service with admin controls)
+ */
+const processDailyProfits = async () => {
+  try {
+    console.log("Starting daily profit distribution...");
+
+    // Use the new profit distribution service which handles:
+    // - Admin adjustments
+    // - Paused investments
+    // - Profit rate customization
+    // - Proper tracking and logging
+    const results = await profitDistributionService.distributeAllProfits();
+
+    console.log(`Daily profit distribution complete:`);
+    console.log(`- Total investments processed: ${results.total}`);
+    console.log(`- Successful: ${results.successful}`);
+    console.log(`- Failed: ${results.failed}`);
+    console.log(`- Skipped: ${results.skipped}`);
+
+    return results;
+  } catch (error) {
+    console.error("Error in processDailyProfits:", error);
+    throw error;
+  }
+};
+
+/**
+ * Start cron jobs
+ */
+const startCronJobs = () => {
+  // Process completed investments every hour
+  setInterval(async () => {
+    console.log("Running: Process completed investments");
+    await processCompletedInvestments();
+  }, 60 * 60 * 1000); // Every hour
+
+  // Process daily profits once per day at midnight (00:00)
+  const scheduleDailyProfitDistribution = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); // Next midnight
+
+    const msUntilMidnight = midnight - now;
+
+    // Run first distribution at next midnight
+    setTimeout(async () => {
+      console.log("Running: Daily profit distribution (scheduled)");
+      await processDailyProfits();
+
+      // Then run every 24 hours
+      setInterval(async () => {
+        console.log("Running: Daily profit distribution (scheduled)");
+        await processDailyProfits();
+      }, 24 * 60 * 60 * 1000); // Every 24 hours
+    }, msUntilMidnight);
+
+    console.log(`Daily profit distribution scheduled to run at midnight (in ${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
+  };
+
+  scheduleDailyProfitDistribution();
+
+  console.log("Cron jobs started");
+};
+
+module.exports = {
+  processCompletedInvestments,
+  processDailyProfits,
+  startCronJobs,
+};

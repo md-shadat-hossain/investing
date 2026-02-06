@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(dir /s \"C:\\\\Users\\\\shada\\\\Desktop\\\\New Projcet\\\\Investment Project\\\\investment-admin-panel\")",
+      "Bash(npm install)",
+      "Bash(node -e:*)",
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(del \"C:\\\\Users\\\\shada\\\\Desktop\\\\New Projcet\\\\Investment Project\\\\investment-server\\\\update_collection.js\")",
+      "Bash(npm install:*)",
+      "Bash(dir:*)"
+    ]
+  }
+}

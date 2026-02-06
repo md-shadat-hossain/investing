@@ -1,0 +1,15 @@
+module.exports.authService = require('./auth.service');
+module.exports.emailService = require('./email.service');
+module.exports.tokenService = require('./token.service');
+module.exports.userService = require('./user.service');
+module.exports.walletService = require('./wallet.service');
+module.exports.investmentPlanService = require('./investmentPlan.service');
+module.exports.investmentService = require('./investment.service');
+module.exports.transactionService = require('./transaction.service');
+module.exports.referralService = require('./referral.service');
+module.exports.paymentGatewayService = require('./paymentGateway.service');
+module.exports.supportTicketService = require('./supportTicket.service');
+module.exports.notificationService = require('./notification.service');
+module.exports.cronService = require('./cron.service');
+module.exports.profitDistributionService = require('./profitDistribution.service');
+module.exports.profitAdjustmentService = require('./profitAdjustment.service');
