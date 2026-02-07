@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, Users, DollarSign, Activity, Download, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, DollarSign, Activity, Download, Calendar, X } from 'lucide-react';
+import { useGetDashboardStatsQuery } from '../store/api/analyticsApi';
 
 export const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
 
-  // Mock data
-  const revenueData = [
+  // RTK Query hooks
+  const { data: statsResponse, isLoading, error } = useGetDashboardStatsQuery();
+
+  // Extract stats from response
+  const dashboardData = statsResponse?.data?.attributes || {};
+
+  // Mock data for charts (to be replaced with real data when available)
+  const revenueData = dashboardData.monthlyRevenue || [
     { name: 'Jan', revenue: 45000, deposits: 65000, withdrawals: 20000 },
     { name: 'Feb', revenue: 52000, deposits: 72000, withdrawals: 20000 },
     { name: 'Mar', revenue: 48000, deposits: 68000, withdrawals: 20000 },
@@ -22,7 +29,11 @@ export const Analytics: React.FC = () => {
     { name: 'Week 4', users: 195, active: 148 },
   ];
 
-  const investmentDistribution = [
+  const investmentDistribution = dashboardData.investmentsByPlan?.map((plan: any) => ({
+    name: plan.planName,
+    value: plan.count,
+    color: plan.color || '#0F172A'
+  })) || [
     { name: 'Starter Gold', value: 25, color: '#F59E0B' },
     { name: 'Premium Platinum', value: 35, color: '#8B5CF6' },
     { name: 'Diamond Legacy', value: 40, color: '#0F172A' },
@@ -30,38 +41,64 @@ export const Analytics: React.FC = () => {
 
   const stats = [
     {
-      title: 'Total Revenue',
-      value: '$328,450',
+      title: 'Total Users',
+      value: dashboardData.totalUsers?.toLocaleString() || '0',
       change: '+12.5%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'emerald'
-    },
-    {
-      title: 'Active Users',
-      value: '1,842',
-      change: '+8.2%',
       trend: 'up',
       icon: Users,
       color: 'blue'
     },
     {
-      title: 'Total Investments',
-      value: '$2.4M',
+      title: 'Total Invested',
+      value: `$${dashboardData.totalInvested?.toLocaleString() || '0'}`,
       change: '+15.3%',
       trend: 'up',
       icon: TrendingUp,
       color: 'purple'
     },
     {
-      title: 'Avg. Transaction',
-      value: '$1,245',
+      title: 'Pending Deposits',
+      value: dashboardData.pendingDeposits?.toLocaleString() || '0',
+      change: '+8.2%',
+      trend: 'up',
+      icon: DollarSign,
+      color: 'emerald'
+    },
+    {
+      title: 'Pending Withdrawals',
+      value: dashboardData.pendingWithdrawals?.toLocaleString() || '0',
       change: '-2.4%',
       trend: 'down',
       icon: Activity,
       color: 'amber'
     }
   ];
+
+  // Loading and error states
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-navy-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="text-rose-600" size={32} />
+          </div>
+          <p className="text-rose-600 font-medium">Failed to load analytics</p>
+          <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

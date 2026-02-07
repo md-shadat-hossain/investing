@@ -3,12 +3,16 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { useResetPasswordMutation } from '@/store/api/authApi'
+import { Toast, ToastType } from '@/components/Toast'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
+
+  const [resetPassword, { isLoading }] = useResetPasswordMutation()
 
   const [formData, setFormData] = useState({
     password: '',
@@ -16,14 +20,16 @@ function ResetPasswordForm() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [error, setError] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null)
 
   useEffect(() => {
     if (!token) {
-      setError('Invalid or missing reset token. Please request a new password reset link.')
+      setToast({
+        message: 'Invalid or missing reset token. Please request a new password reset link.',
+        type: 'error'
+      })
     }
   }, [token])
 
@@ -47,57 +53,66 @@ function ResetPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!token) {
-      setError('Invalid reset token')
+      setToast({
+        message: 'Invalid reset token',
+        type: 'error'
+      })
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+      setToast({
+        message: 'Passwords do not match',
+        type: 'error'
+      })
       return
     }
 
     if (validationErrors.length > 0) {
-      setError('Please meet all password requirements')
+      setToast({
+        message: 'Please meet all password requirements',
+        type: 'error'
+      })
       return
     }
 
-    setIsSubmitting(true)
-
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/v1/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          password: formData.password,
-        }),
-      })
+      await resetPassword({
+        token,
+        newPassword: formData.password,
+      }).unwrap()
 
-      if (response.ok) {
-        setIsSuccess(true)
-        setTimeout(() => {
-          router.push('/login')
-        }, 3000)
-      } else {
-        const data = await response.json()
-        setError(data.message || 'Failed to reset password. The link may have expired.')
-      }
-    } catch (err) {
-      setError('Network error. Please check your connection.')
-    } finally {
-      setIsSubmitting(false)
+      setIsSuccess(true)
+      setToast({
+        message: 'Password reset successful! Redirecting to login...',
+        type: 'success'
+      })
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+    } catch (error: any) {
+      const errorMsg = error.data?.message || 'Failed to reset password. The link may have expired.'
+      setToast({
+        message: errorMsg,
+        type: 'error'
+      })
     }
   }
 
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+
         <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-lg border border-slate-800 rounded-2xl p-8 text-center">
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="text-emerald-500" size={32} />
@@ -106,7 +121,15 @@ function ResetPasswordForm() {
           <p className="text-slate-400 mb-6">
             Your password has been successfully reset. You can now log in with your new password.
           </p>
-          <p className="text-sm text-slate-500">Redirecting to login page in 3 seconds...</p>
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-6">
+            <p className="text-sm text-slate-300">Redirecting to login page in 3 seconds...</p>
+          </div>
+          <Link
+            href="/login"
+            className="inline-block bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold px-8 py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20"
+          >
+            Go to Login Now
+          </Link>
         </div>
       </div>
     )
@@ -114,6 +137,15 @@ function ResetPasswordForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6">
@@ -132,7 +164,7 @@ function ResetPasswordForm() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-400 flex-shrink-0 mt-0.5" size={20} />
                 <div>
-                  <p className="text-rose-400 text-sm mb-2">{error}</p>
+                  <p className="text-rose-400 text-sm mb-2">Invalid or missing reset token. Please request a new password reset link.</p>
                   <Link
                     href="/forgot-password"
                     className="text-gold-500 hover:text-gold-400 text-sm font-medium"
@@ -156,20 +188,21 @@ function ResetPasswordForm() {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg pl-12 pr-12 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
+                    disabled={isLoading}
+                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg pl-12 pr-12 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Enter new password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
                 {formData.password && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs text-slate-400">Password must contain:</p>
+                    <p className="text-xs text-slate-400 font-medium">Password must contain:</p>
                     <div className="grid grid-cols-2 gap-2">
                       {['At least 8 characters', 'One uppercase letter', 'One lowercase letter', 'One number'].map((req, idx) => {
                         const isValid = !validationErrors.includes(req)
@@ -199,34 +232,39 @@ function ResetPasswordForm() {
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg pl-12 pr-12 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all"
+                    disabled={isLoading}
+                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg pl-12 pr-12 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Confirm new password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                  <p className="text-xs text-rose-400 mt-2">Passwords do not match</p>
+                  <p className="text-xs text-rose-400 mt-2 flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    Passwords do not match
+                  </p>
                 )}
               </div>
 
-              {error && (
-                <div className="bg-rose-500/10 border border-rose-500/50 rounded-lg p-4">
-                  <p className="text-rose-400 text-sm">{error}</p>
-                </div>
-              )}
-
               <button
                 type="submit"
-                disabled={isSubmitting || validationErrors.length > 0 || formData.password !== formData.confirmPassword}
-                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || validationErrors.length > 0 || formData.password !== formData.confirmPassword}
+                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Resetting Password...
+                  </>
+                ) : (
+                  'Reset Password'
+                )}
               </button>
             </form>
           )}
@@ -249,7 +287,9 @@ export default function ResetPassword() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center animate-pulse">
+          <Loader2 className="text-gold-500 animate-spin" size={32} />
+        </div>
       </div>
     }>
       <ResetPasswordForm />

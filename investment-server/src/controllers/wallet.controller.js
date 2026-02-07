@@ -16,7 +16,8 @@ const getWallet = catchAsync(async (req, res) => {
 });
 
 const getWalletStats = catchAsync(async (req, res) => {
-  const stats = await walletService.getWalletStats(req.user._id);
+  const { timeRange } = req.query;
+  const stats = await walletService.getWalletStats(req.user._id, timeRange);
   res.status(httpStatus.OK).json(
     response({
       message: "Wallet statistics retrieved successfully",

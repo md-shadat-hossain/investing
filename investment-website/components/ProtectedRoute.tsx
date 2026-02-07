@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
@@ -8,8 +8,21 @@ import { RootState } from '../store/store';
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Give Redux time to hydrate from localStorage
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    // Only run checks after initial loading
+    if (isLoading) return;
+
     // Check if user is not authenticated
     if (!isAuthenticated) {
       router.replace('/login');
@@ -19,14 +32,12 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     // Check if user is admin (admins should not access user dashboard)
     if (user && (user.role === 'admin' || user.role === 'superadmin')) {
       router.replace('/login');
-      // Optional: Show error message
-      alert('Access denied. This portal is for users only. Please use the admin panel.');
       return;
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isLoading]);
 
-  // Show loading or nothing while checking auth
-  if (!isAuthenticated || !user) {
+  // Show loading during hydration
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
@@ -35,6 +46,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         </div>
       </div>
     );
+  }
+
+  // Show loading if still checking auth
+  if (!isAuthenticated || !user) {
+    return null; // Return null while redirecting
   }
 
   // Check if user is admin

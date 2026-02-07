@@ -2,6 +2,9 @@
 
 import React, { useState, useRef } from 'react';
 import { Bitcoin, CreditCard, ArrowRight, CheckCircle2, Upload, Copy, AlertCircle, ArrowLeft, Loader2, X } from 'lucide-react';
+import { useGetActiveGatewaysQuery } from '@/store/api/paymentGatewayApi';
+import { useCreateDepositMutation } from '@/store/api/transactionApi';
+import type { PaymentGateway } from '@/store/api/paymentGatewayApi';
 
 const AddFunds = () => {
   const [step, setStep] = useState(1);
@@ -11,48 +14,16 @@ const AddFunds = () => {
   // Step 2 Verification States
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const gateways = [
-    {
-      id: 'btc',
-      name: 'Bitcoin (BTC)',
-      icon: <Bitcoin size={24} />,
-      min: 50,
-      max: 100000,
-      charge: 0,
-      address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-    },
-    {
-      id: 'usdt',
-      name: 'Tether (USDT TRC20)',
-      icon: <span className="font-bold text-lg">₮</span>,
-      min: 10,
-      max: 50000,
-      charge: 1,
-      address: 'TVJ5dW6F56...8j2'
-    },
-    {
-      id: 'eth',
-      name: 'Ethereum (ETH)',
-      icon: <span className="font-bold text-lg">Ξ</span>,
-      min: 100,
-      max: 100000,
-      charge: 0.5,
-      address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'
-    },
-    {
-      id: 'bank',
-      name: 'Bank Transfer',
-      icon: <CreditCard size={24} />,
-      min: 500,
-      max: 1000000,
-      charge: 0,
-      address: 'Chase Bank\nAccount: 987654321\nRouting: 123456789\nSwift: CHASUS33'
-    },
-  ];
+  // API hooks
+  const { data: gatewaysResponse, isLoading: loadingGateways } = useGetActiveGatewaysQuery({ purpose: 'deposit' });
+  const [createDeposit, { isLoading: isSubmitting }] = useCreateDepositMutation();
+
+  // Extract gateways from response
+  const IMAGE_BASE_URL = 'http://10.10.11.87:8080';
+  const gateways: PaymentGateway[] = gatewaysResponse?.data?.attributes || [];
 
   const handleGatewaySelect = (id: string) => {
     setSelectedGateway(id);
@@ -64,7 +35,36 @@ const AddFunds = () => {
   const calculateTotal = () => {
     if (!amount || !selectedGatewayData) return 0;
     const val = parseFloat(amount);
-    return val + (val * (selectedGatewayData.charge / 100));
+    const fee = selectedGatewayData.depositFee || 0;
+    const feeType = selectedGatewayData.depositFeeType || 'fixed';
+
+    if (feeType === 'percentage') {
+      return val + (val * (fee / 100));
+    }
+    return val + fee;
+  };
+
+  const getFeeAmount = () => {
+    if (!amount || !selectedGatewayData) return 0;
+    const val = parseFloat(amount);
+    const fee = selectedGatewayData.depositFee || 0;
+    const feeType = selectedGatewayData.depositFeeType || 'fixed';
+
+    if (feeType === 'percentage') {
+      return (val * (fee / 100));
+    }
+    return fee;
+  };
+
+  const getAccountDetails = () => {
+    if (!selectedGatewayData) return '';
+
+    if (selectedGatewayData.type === 'bank' && selectedGatewayData.bankDetails) {
+      const { bankName, accountNumber, accountName, routingNumber, swiftCode, iban } = selectedGatewayData.bankDetails;
+      return `Bank Name: ${bankName || ''}\nAccount Name: ${accountName || ''}\nAccount Number: ${accountNumber || ''}\nRouting Number: ${routingNumber || ''}\nSWIFT Code: ${swiftCode || ''}\nIBAN: ${iban || ''}`;
+    }
+
+    return selectedGatewayData.walletAddress || '';
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,14 +80,27 @@ const AddFunds = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    if (!selectedGateway || !screenshot || !transactionId || !amount) {
+      alert('Please fill all required fields');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('amount', amount);
+      formData.append('paymentGatewayId', selectedGateway);
+      formData.append('txHash', transactionId);
+      formData.append('proofImage', screenshot);
+
+      await createDeposit(formData).unwrap();
       setSuccess(true);
-    }, 2000);
+    } catch (error: any) {
+      console.error('Failed to create deposit:', error);
+      alert(error?.data?.message || 'Failed to submit deposit. Please try again.');
+    }
   };
 
   const resetForm = () => {
@@ -145,30 +158,57 @@ const AddFunds = () => {
           {step === 1 ? (
             /* STEP 1: Gateway & Amount Selection */
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {gateways.map((gateway) => (
-                  <button
-                    key={gateway.id}
-                    onClick={() => handleGatewaySelect(gateway.id)}
-                    className={`relative p-6 rounded-xl border flex flex-col items-start transition-all duration-200 ${
-                      selectedGateway === gateway.id
-                        ? 'bg-slate-800 border-gold-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
-                        : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    {selectedGateway === gateway.id && (
-                      <div className="absolute top-3 right-3 text-gold-500">
-                        <CheckCircle2 size={20} />
-                      </div>
-                    )}
-                    <div className={`p-3 rounded-lg mb-4 ${selectedGateway === gateway.id ? 'bg-gold-500 text-slate-900' : 'bg-slate-800 text-slate-400'}`}>
-                      {gateway.icon}
-                    </div>
-                    <h3 className="text-white font-bold text-lg">{gateway.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">Min: ${gateway.min} • Max: ${gateway.max.toLocaleString()}</p>
-                  </button>
-                ))}
-              </div>
+              {loadingGateways ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-gold-500" size={32} />
+                </div>
+              ) : gateways.length === 0 ? (
+                <div className="text-center py-12 bg-slate-900 rounded-xl border border-slate-800">
+                  <p className="text-slate-400">No payment gateways available at the moment</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {gateways.map((gateway) => {
+                    const icon = gateway.icon ? (
+                      <img src={gateway.icon} alt={gateway.name} className="w-6 h-6 object-contain" />
+                    ) : gateway.type === 'crypto' ? (
+                      <Bitcoin size={24} />
+                    ) : (
+                      <CreditCard size={24} />
+                    );
+
+                    return (
+                      <button
+                        key={gateway.id}
+                        onClick={() => handleGatewaySelect(gateway.id)}
+                        className={`relative p-6 rounded-xl border flex flex-col items-start transition-all duration-200 ${
+                          selectedGateway === gateway.id
+                            ? 'bg-slate-800 border-gold-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+                            : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {selectedGateway === gateway.id && (
+                          <div className="absolute top-3 right-3 text-gold-500">
+                            <CheckCircle2 size={20} />
+                          </div>
+                        )}
+                        <div className={`p-3 rounded-lg mb-4 ${selectedGateway === gateway.id ? 'bg-gold-500 text-slate-900' : 'bg-slate-800 text-slate-400'}`}>
+                          {icon}
+                        </div>
+                        <h3 className="text-white font-bold text-lg">{gateway.name}</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Min: ${gateway.minDeposit || 0} • Max: ${(gateway.maxDeposit || 0).toLocaleString()}
+                        </p>
+                        {gateway.depositFee && gateway.depositFee > 0 && (
+                          <p className="text-xs text-amber-400 mt-1">
+                            Fee: {gateway.depositFeeType === 'percentage' ? `${gateway.depositFee}%` : `$${gateway.depositFee}`}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
                 <label className="block text-sm font-medium text-slate-300 mb-2">Enter Amount (USD)</label>
@@ -179,12 +219,14 @@ const AddFunds = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
+                    min={selectedGatewayData?.minDeposit || 0}
+                    max={selectedGatewayData?.maxDeposit || 0}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-4 py-4 text-white text-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors"
                   />
                 </div>
-                {selectedGateway && (
+                {selectedGateway && selectedGatewayData && (
                    <p className="text-xs text-slate-500 mt-2 text-right">
-                     Transaction limit: ${selectedGatewayData?.min} - ${selectedGatewayData?.max.toLocaleString()}
+                     Transaction limit: ${selectedGatewayData.minDeposit || 0} - ${(selectedGatewayData.maxDeposit || 0).toLocaleString()}
                    </p>
                 )}
               </div>
@@ -208,18 +250,34 @@ const AddFunds = () => {
 
                 <div className="bg-slate-950 rounded-lg p-4 border border-slate-800 relative group">
                   <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">
-                    {selectedGateway === 'bank' ? 'Bank Details' : 'Wallet Address'}
+                    {selectedGatewayData?.type === 'bank' ? 'Bank Details' : 'Wallet Address'}
                   </p>
                   <pre className="text-white font-mono text-sm whitespace-pre-wrap break-all">
-                    {selectedGatewayData?.address}
+                    {getAccountDetails()}
                   </pre>
                   <button
-                    onClick={() => navigator.clipboard.writeText(selectedGatewayData?.address || '')}
+                    onClick={() => navigator.clipboard.writeText(getAccountDetails())}
                     className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-1"
                   >
                     <Copy size={18} />
                   </button>
                 </div>
+
+                {selectedGatewayData?.qrCode && (
+                  <div className="mt-4 flex justify-center">
+                    <img
+                      src={`${IMAGE_BASE_URL}${selectedGatewayData.qrCode}`}
+                      alt="QR Code"
+                      className="w-48 h-48 border-2 border-slate-700 rounded-lg"
+                    />
+                  </div>
+                )}
+
+                {selectedGatewayData?.instructions && (
+                  <div className="mt-4 p-4 bg-blue-500/5 border border-blue-500/30 rounded-lg">
+                    <p className="text-sm text-slate-300">{selectedGatewayData.instructions}</p>
+                  </div>
+                )}
               </div>
 
               {/* Verification Form */}
@@ -324,10 +382,10 @@ const AddFunds = () => {
                 <span className="text-white font-medium">${amount ? parseFloat(amount).toFixed(2) : '0.00'}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Charge</span>
+                <span className="text-slate-400">Fee</span>
                 <span className="text-red-400 font-medium">
                   {selectedGateway && amount
-                    ? `+$${(parseFloat(amount) * (selectedGatewayData!.charge / 100)).toFixed(2)}`
+                    ? `+$${getFeeAmount().toFixed(2)}`
                     : '$0.00'}
                 </span>
               </div>
@@ -343,7 +401,25 @@ const AddFunds = () => {
             {step === 1 && (
               <>
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    if (!selectedGatewayData || !amount) return;
+
+                    const numAmount = parseFloat(amount);
+                    const min = selectedGatewayData.minDeposit || 0;
+                    const max = selectedGatewayData.maxDeposit || 0;
+
+                    if (numAmount < min) {
+                      alert(`Minimum deposit amount is $${min}`);
+                      return;
+                    }
+
+                    if (numAmount > max) {
+                      alert(`Maximum deposit amount is $${max}`);
+                      return;
+                    }
+
+                    setStep(2);
+                  }}
                   disabled={!selectedGateway || !amount}
                   className={`w-full py-4 rounded-lg font-bold flex items-center justify-center transition-all ${
                     selectedGateway && amount

@@ -140,8 +140,11 @@ const approveTransaction = async (transactionId, adminId, adminNote = null) => {
   if (transaction.type === "deposit") {
     // Add to wallet
     await walletService.addDeposit(transaction.user, transaction.netAmount);
+  } else if (transaction.type === "withdraw") {
+    // For withdrawals, balance was already deducted when request was created
+    // Now update totalWithdraw to track total withdrawn amount (including fees)
+    await walletService.updateTotalWithdraw(transaction.user, transaction.amount);
   }
-  // For withdrawals, amount was already deducted when request was created
 
   transaction.status = "completed";
   transaction.processedBy = adminId;

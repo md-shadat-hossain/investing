@@ -2,34 +2,9 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Download, Clock, CheckCircle, XCircle, AlertCircle, DollarSign, CreditCard, Hash, Calendar, FileText, User, Eye } from 'lucide-react'
+import { ArrowLeft, Download, Clock, CheckCircle, XCircle, AlertCircle, DollarSign, CreditCard, Hash, Calendar, FileText, User, Eye, Loader2 } from 'lucide-react'
 import Image from 'next/image'
-
-interface Transaction {
-  id: string
-  transactionId: string
-  type: 'deposit' | 'withdrawal' | 'profit' | 'referral_commission'
-  amount: number
-  fee: number
-  netAmount: number
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'failed'
-  paymentMethod: string
-  paymentGateway: string
-  walletAddress?: string
-  txHash?: string
-  proofImage?: string
-  createdAt: string
-  updatedAt: string
-  approvedAt?: string
-  rejectedAt?: string
-  adminNote?: string
-  rejectionReason?: string
-  statusHistory: Array<{
-    status: string
-    timestamp: string
-    note?: string
-  }>
-}
+import { useGetTransactionByIdQuery } from '@/store/api/transactionApi'
 
 export default function TransactionDetail() {
   const params = useParams()
@@ -38,37 +13,39 @@ export default function TransactionDetail() {
 
   const [showProofImage, setShowProofImage] = useState(false)
 
-  // TODO: Replace with actual API call - GET /api/v1/transactions/:transactionId
-  const [transaction] = useState<Transaction>({
-    id: transactionId,
-    transactionId: 'TXN-2024-001234',
-    type: 'deposit',
-    amount: 500,
-    fee: 0,
-    netAmount: 500,
-    status: 'approved',
-    paymentMethod: 'Bitcoin',
-    paymentGateway: 'BTC Wallet',
-    walletAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    txHash: '0x7d8f3a4e9c2b1f5e8d7c6b5a4e3d2c1b9a8f7e6d5c4b3a2f1e0d9c8b7a6',
-    proofImage: '/uploads/proof-123.jpg',
-    createdAt: '2024-02-05T10:30:00Z',
-    updatedAt: '2024-02-05T11:45:00Z',
-    approvedAt: '2024-02-05T11:45:00Z',
-    adminNote: 'Payment verified and confirmed on blockchain. Transaction processed successfully.',
-    statusHistory: [
-      {
-        status: 'approved',
-        timestamp: '2024-02-05T11:45:00Z',
-        note: 'Payment verified and approved by admin',
-      },
-      {
-        status: 'pending',
-        timestamp: '2024-02-05T10:30:00Z',
-        note: 'Transaction submitted for review',
-      },
-    ],
-  })
+  // Fetch transaction from API
+  const { data: transactionResponse, isLoading, error } = useGetTransactionByIdQuery(transactionId)
+
+  const IMAGE_BASE_URL = 'http://10.10.11.87:8080'
+  const transaction = transactionResponse?.data?.attributes
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-gold-500 mx-auto mb-4" size={32} />
+          <p className="text-slate-400">Loading transaction details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !transaction) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-rose-500 font-medium">Failed to load transaction</p>
+          <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+          <button
+            onClick={() => router.back()}
+            className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -80,36 +57,38 @@ export default function TransactionDetail() {
     })
   }
 
-  const getStatusIcon = (status: Transaction['status']) => {
-    const icons = {
+  const getStatusIcon = (status: string) => {
+    const icons: Record<string, JSX.Element> = {
       pending: <Clock className="text-amber-500" size={24} />,
-      approved: <CheckCircle className="text-emerald-500" size={24} />,
+      processing: <Clock className="text-blue-500" size={24} />,
+      completed: <CheckCircle className="text-emerald-500" size={24} />,
       rejected: <XCircle className="text-rose-500" size={24} />,
-      completed: <CheckCircle className="text-blue-500" size={24} />,
-      failed: <AlertCircle className="text-rose-500" size={24} />,
+      cancelled: <AlertCircle className="text-slate-500" size={24} />,
     }
-    return icons[status]
+    return icons[status] || <Clock className="text-slate-500" size={24} />
   }
 
-  const getStatusColor = (status: Transaction['status']) => {
-    const colors = {
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
       pending: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
-      approved: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+      processing: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
+      completed: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
       rejected: 'text-rose-500 bg-rose-500/10 border-rose-500/30',
-      completed: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
-      failed: 'text-rose-500 bg-rose-500/10 border-rose-500/30',
+      cancelled: 'text-slate-500 bg-slate-500/10 border-slate-500/30',
     }
-    return colors[status]
+    return colors[status] || 'text-slate-500 bg-slate-500/10 border-slate-500/30'
   }
 
-  const getTypeColor = (type: Transaction['type']) => {
-    const colors = {
+  const getTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
       deposit: 'text-emerald-500 bg-emerald-500/10',
-      withdrawal: 'text-rose-500 bg-rose-500/10',
-      profit: 'text-blue-500 bg-blue-500/10',
-      referral_commission: 'text-gold-500 bg-gold-500/10',
+      withdraw: 'text-rose-500 bg-rose-500/10',
+      investment: 'text-blue-500 bg-blue-500/10',
+      profit: 'text-gold-500 bg-gold-500/10',
+      referral: 'text-amber-500 bg-amber-500/10',
+      bonus: 'text-purple-500 bg-purple-500/10',
     }
-    return colors[type]
+    return colors[type] || 'text-slate-500 bg-slate-500/10'
   }
 
   return (
@@ -152,18 +131,15 @@ export default function TransactionDetail() {
             {getStatusIcon(transaction.status)}
           </div>
           <div className="flex-1">
-            <h3 className="text-white font-semibold text-lg mb-1">
-              {transaction.status === 'approved' && 'Transaction Approved'}
-              {transaction.status === 'completed' && 'Transaction Completed'}
-              {transaction.status === 'rejected' && 'Transaction Rejected'}
-              {transaction.status === 'failed' && 'Transaction Failed'}
-              {transaction.status === 'pending' && 'Transaction Pending Review'}
+            <h3 className="text-white font-semibold text-lg mb-1 capitalize">
+              Transaction {transaction.status}
             </h3>
             <p className="text-slate-300 text-sm">
-              {transaction.status === 'approved' && transaction.adminNote}
-              {transaction.status === 'rejected' && transaction.rejectionReason}
+              {transaction.status === 'completed' && (transaction.adminNotes || 'Your transaction has been completed successfully.')}
+              {transaction.status === 'rejected' && (transaction.adminNotes || 'Your transaction was rejected. Please contact support for more information.')}
               {transaction.status === 'pending' && 'Your transaction is being reviewed by our team. This usually takes 15-30 minutes.'}
-              {transaction.status === 'failed' && 'The transaction failed to process. Please contact support.'}
+              {transaction.status === 'processing' && 'Your transaction is being processed.'}
+              {transaction.status === 'cancelled' && 'This transaction was cancelled.'}
             </p>
           </div>
         </div>
@@ -226,17 +202,19 @@ export default function TransactionDetail() {
               <CreditCard className="text-slate-400 flex-shrink-0 mt-0.5" size={18} />
               <div className="flex-1">
                 <p className="text-slate-400 text-xs mb-1">Payment Method</p>
-                <p className="text-white text-sm">{transaction.paymentMethod}</p>
+                <p className="text-white text-sm capitalize">{transaction.paymentMethod || '-'}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
-              <User className="text-slate-400 flex-shrink-0 mt-0.5" size={18} />
-              <div className="flex-1">
-                <p className="text-slate-400 text-xs mb-1">Payment Gateway</p>
-                <p className="text-white text-sm">{transaction.paymentGateway}</p>
+            {transaction.paymentGateway && (
+              <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
+                <User className="text-slate-400 flex-shrink-0 mt-0.5" size={18} />
+                <div className="flex-1">
+                  <p className="text-slate-400 text-xs mb-1">Payment Gateway</p>
+                  <p className="text-white text-sm">{transaction.paymentGateway.name}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {transaction.walletAddress && (
               <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
@@ -279,22 +257,22 @@ export default function TransactionDetail() {
               </div>
             </div>
 
-            {transaction.approvedAt && (
+            {transaction.processedAt && (
               <div className="flex items-start gap-3 p-3 bg-emerald-500/5 border border-emerald-500/30 rounded-lg">
                 <CheckCircle className="text-emerald-500 flex-shrink-0 mt-0.5" size={18} />
                 <div className="flex-1">
-                  <p className="text-emerald-400 text-xs mb-1">Approved At</p>
-                  <p className="text-white text-sm">{formatDate(transaction.approvedAt)}</p>
+                  <p className="text-emerald-400 text-xs mb-1">Processed At</p>
+                  <p className="text-white text-sm">{formatDate(transaction.processedAt)}</p>
                 </div>
               </div>
             )}
 
-            {transaction.rejectedAt && (
-              <div className="flex items-start gap-3 p-3 bg-rose-500/5 border border-rose-500/30 rounded-lg">
-                <XCircle className="text-rose-500 flex-shrink-0 mt-0.5" size={18} />
+            {transaction.notes && (
+              <div className="flex items-start gap-3 p-3 bg-blue-500/5 border border-blue-500/30 rounded-lg">
+                <FileText className="text-blue-500 flex-shrink-0 mt-0.5" size={18} />
                 <div className="flex-1">
-                  <p className="text-rose-400 text-xs mb-1">Rejected At</p>
-                  <p className="text-white text-sm">{formatDate(transaction.rejectedAt)}</p>
+                  <p className="text-blue-400 text-xs mb-1">Notes</p>
+                  <p className="text-white text-sm">{transaction.notes}</p>
                 </div>
               </div>
             )}
@@ -318,37 +296,15 @@ export default function TransactionDetail() {
         </div>
       </div>
 
-      {/* Status History */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-        <h3 className="text-white font-semibold text-lg mb-4">Status History</h3>
-        <div className="space-y-4">
-          {transaction.statusHistory.map((history, index) => (
-            <div key={index} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  history.status === 'approved' || history.status === 'completed'
-                    ? 'bg-emerald-500/10 text-emerald-500'
-                    : history.status === 'rejected' || history.status === 'failed'
-                    ? 'bg-rose-500/10 text-rose-500'
-                    : 'bg-amber-500/10 text-amber-500'
-                }`}>
-                  {history.status === 'approved' ? <CheckCircle size={16} /> : <Clock size={16} />}
-                </div>
-                {index < transaction.statusHistory.length - 1 && (
-                  <div className="w-0.5 h-full bg-slate-700 mt-2" />
-                )}
-              </div>
-              <div className="flex-1 pb-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-medium capitalize">{history.status}</span>
-                  <span className="text-slate-500 text-xs">{formatDate(history.timestamp)}</span>
-                </div>
-                {history.note && <p className="text-slate-400 text-sm">{history.note}</p>}
-              </div>
-            </div>
-          ))}
+      {/* Admin Notes */}
+      {transaction.adminNotes && (
+        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+          <h3 className="text-white font-semibold text-lg mb-4">Admin Notes</h3>
+          <div className="p-4 bg-blue-500/5 border border-blue-500/30 rounded-lg">
+            <p className="text-slate-300 text-sm">{transaction.adminNotes}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Proof Image Modal */}
       {showProofImage && transaction.proofImage && (
@@ -362,7 +318,7 @@ export default function TransactionDetail() {
             </div>
             <div className="p-6">
               <img
-                src={transaction.proofImage}
+                src={`${IMAGE_BASE_URL}${transaction.proofImage}`}
                 alt="Payment Proof"
                 className="w-full h-auto rounded-lg"
               />

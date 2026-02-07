@@ -4,16 +4,20 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle2, XCircle, Loader2, Mail } from 'lucide-react'
+import { useVerifyEmailMutation, useResendVerificationEmailMutation } from '@/store/api/authApi'
+import { Toast, ToastType } from '@/components/Toast'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
 
+  const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation()
+  const [resendVerificationEmail, { isLoading: isResending }] = useResendVerificationEmailMutation()
+
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
   const [errorMessage, setErrorMessage] = useState('')
-  const [resendingEmail, setResendingEmail] = useState(false)
-  const [resendSuccess, setResendSuccess] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -22,66 +26,60 @@ function VerifyEmailContent() {
       return
     }
 
-    verifyEmail()
+    handleVerifyEmail()
   }, [token])
 
-  const verifyEmail = async () => {
-    try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/v1/auth/verify-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      })
+  const handleVerifyEmail = async () => {
+    if (!token) return
 
-      if (response.ok) {
-        setStatus('success')
-        setTimeout(() => {
-          router.push('/login')
-        }, 5000)
-      } else {
-        const data = await response.json()
-        setStatus('error')
-        setErrorMessage(data.message || 'Verification failed. The link may have expired.')
-      }
-    } catch (err) {
+    try {
+      await verifyEmail({ token }).unwrap()
+      setStatus('success')
+      setToast({
+        message: 'Email verified successfully! Redirecting to login...',
+        type: 'success'
+      })
+      setTimeout(() => {
+        router.push('/login')
+      }, 5000)
+    } catch (error: any) {
+      const errorMsg = error.data?.message || 'Verification failed. The link may have expired.'
       setStatus('error')
-      setErrorMessage('Network error. Please check your connection.')
+      setErrorMessage(errorMsg)
+      setToast({
+        message: errorMsg,
+        type: 'error'
+      })
     }
   }
 
   const handleResendEmail = async () => {
-    setResendingEmail(true)
-    setResendSuccess(false)
-
     try {
-      // TODO: Replace with actual API call
-      // You'll need to get the user's email somehow or use the token
-      const response = await fetch('/api/v1/auth/send-verification-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`, // If user is logged in
-        },
+      await resendVerificationEmail({}).unwrap()
+      setToast({
+        message: 'Verification email sent! Check your inbox.',
+        type: 'success'
       })
-
-      if (response.ok) {
-        setResendSuccess(true)
-      } else {
-        const data = await response.json()
-        alert(data.message || 'Failed to resend verification email.')
-      }
-    } catch (err) {
-      alert('Network error. Please try again.')
-    } finally {
-      setResendingEmail(false)
+    } catch (error: any) {
+      const errorMsg = error.data?.message || 'Failed to resend verification email.'
+      setToast({
+        message: errorMsg,
+        type: 'error'
+      })
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-lg border border-slate-800 rounded-2xl p-8">
 
         {status === 'verifying' && (
@@ -141,22 +139,23 @@ function VerifyEmailContent() {
               </ul>
             </div>
 
-            {resendSuccess && (
-              <div className="bg-emerald-500/10 border border-emerald-500/50 rounded-lg p-4 mb-6">
-                <p className="text-emerald-400 text-sm flex items-center justify-center gap-2">
-                  <Mail size={16} />
-                  Verification email sent! Check your inbox.
-                </p>
-              </div>
-            )}
-
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleResendEmail}
-                disabled={resendingEmail}
-                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isResending}
+                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
+                {isResending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail size={18} />
+                    Resend Verification Email
+                  </>
+                )}
               </button>
               <Link
                 href="/login"
@@ -176,7 +175,9 @@ export default function VerifyEmail() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center animate-pulse">
+          <Loader2 className="text-gold-500 animate-spin" size={32} />
+        </div>
       </div>
     }>
       <VerifyEmailContent />

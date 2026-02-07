@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { InvestmentPlan } from '../types';
-import { MOCK_PLANS } from '../constants';
 import { Plus, TrendingUp, Clock, DollarSign, CheckCircle, Edit, Trash2, Star, X } from 'lucide-react';
+import {
+  useGetAllPlansQuery,
+  useCreatePlanMutation,
+  useUpdatePlanMutation,
+  useDeletePlanMutation,
+  InvestmentPlan as APIPlan,
+} from '../store/api/investmentPlanApi';
 
 interface PlanFormData {
   name: string;
@@ -19,10 +24,19 @@ interface PlanFormData {
 }
 
 export const InvestmentPlans: React.FC = () => {
-  const [plans, setPlans] = useState<InvestmentPlan[]>(MOCK_PLANS);
+  // RTK Query hooks
+  const { data: plansResponse, isLoading, error } = useGetAllPlansQuery({});
+  const [createPlan] = useCreatePlanMutation();
+  const [updatePlan] = useUpdatePlanMutation();
+  const [deletePlan] = useDeletePlanMutation();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<InvestmentPlan | null>(null);
+  const [editingPlan, setEditingPlan] = useState<APIPlan | null>(null);
   const [featureInput, setFeatureInput] = useState('');
+
+  // Extract plans from paginated response
+  const plansData = plansResponse?.data?.attributes || {};
+  const plans = plansData.results || [];
 
   const [formData, setFormData] = useState<PlanFormData>({
     name: '',
@@ -58,23 +72,23 @@ export const InvestmentPlans: React.FC = () => {
     setEditingPlan(null);
   };
 
-  const handleOpenModal = (plan?: InvestmentPlan) => {
+  const handleOpenModal = (plan?: APIPlan) => {
     if (plan) {
       // Edit mode
       setEditingPlan(plan);
       setFormData({
         name: plan.name,
-        description: '', // Add when available in types
+        description: plan.description || '',
         minDeposit: plan.minDeposit,
         maxDeposit: plan.maxDeposit,
         roi: plan.roi,
-        roiType: 'daily', // Add when available
+        roiType: plan.roiType || 'daily',
         duration: plan.duration,
-        durationType: 'days',
-        referralBonus: 0,
-        isPopular: false,
-        isActive: plan.status === 'active',
-        features: []
+        durationType: plan.durationType || 'days',
+        referralBonus: plan.referralBonus || 0,
+        isPopular: plan.isPopular || false,
+        isActive: plan.isActive,
+        features: plan.features || []
       });
     } else {
       resetForm();
@@ -119,68 +133,76 @@ export const InvestmentPlans: React.FC = () => {
     }
 
     try {
-      // TODO: Call API to create/update plan
-      // const endpoint = editingPlan
-      //   ? `/api/v1/plans/${editingPlan.id}`
-      //   : '/api/v1/plans';
-      //
-      // const method = editingPlan ? 'PATCH' : 'POST';
-      //
-      // const response = await fetch(endpoint, {
-      //   method,
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}`
-      //   },
-      //   body: JSON.stringify(formData)
-      // });
-
-      // Mock implementation
       if (editingPlan) {
         // Update existing plan
-        setPlans(plans.map(p =>
-          p.id === editingPlan.id
-            ? { ...p, ...formData, status: formData.isActive ? 'active' : 'inactive' }
-            : p
-        ));
+        await updatePlan({
+          planId: editingPlan.id,
+          data: formData
+        }).unwrap();
         alert('Plan updated successfully!');
       } else {
         // Create new plan
-        const newPlan: InvestmentPlan = {
-          id: `p${Date.now()}`,
-          name: formData.name,
-          roi: formData.roi,
-          duration: formData.duration,
-          minDeposit: formData.minDeposit,
-          maxDeposit: formData.maxDeposit,
-          status: formData.isActive ? 'active' : 'inactive'
-        };
-        setPlans([...plans, newPlan]);
+        await createPlan(formData).unwrap();
         alert('Plan created successfully!');
       }
 
       setIsModalOpen(false);
       resetForm();
-    } catch (error) {
-      alert('Failed to save plan');
+    } catch (error: any) {
+      console.error('Failed to save plan:', error);
+      alert(error?.data?.message || 'Failed to save plan');
     }
   };
 
-  const handleDeletePlan = (planId: string) => {
+  const handleDeletePlan = async (planId: string) => {
     if (confirm('Are you sure you want to delete this plan?')) {
-      // TODO: Call API to delete plan
-      setPlans(plans.filter(p => p.id !== planId));
-      alert('Plan deleted successfully');
+      try {
+        await deletePlan(planId).unwrap();
+        alert('Plan deleted successfully');
+      } catch (error: any) {
+        console.error('Failed to delete plan:', error);
+        alert(error?.data?.message || 'Failed to delete plan');
+      }
     }
   };
 
-  const handleToggleStatus = (plan: InvestmentPlan) => {
-    // TODO: Call API to toggle plan status
-    const newStatus = plan.status === 'active' ? 'inactive' : 'active';
-    setPlans(plans.map(p =>
-      p.id === plan.id ? { ...p, status: newStatus } : p
-    ));
+  const handleToggleStatus = async (plan: APIPlan) => {
+    try {
+      await updatePlan({
+        planId: plan.id,
+        data: { isActive: !plan.isActive }
+      }).unwrap();
+    } catch (error: any) {
+      console.error('Failed to toggle plan status:', error);
+      alert(error?.data?.message || 'Failed to toggle plan status');
+    }
   };
+
+  // Loading and error states
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading investment plans...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="text-rose-600" size={32} />
+          </div>
+          <p className="text-rose-600 font-medium">Failed to load investment plans</p>
+          <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -198,18 +220,27 @@ export const InvestmentPlans: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map(plan => (
+        {plans.map((plan: APIPlan) => (
           <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group hover:shadow-md transition-all">
-            <div className={`h-1 w-full ${plan.status === 'active' ? 'bg-gold-500' : 'bg-slate-300'}`}></div>
+            <div className={`h-1 w-full ${plan.isActive ? 'bg-gold-500' : 'bg-slate-300'}`}></div>
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-navy-900">{plan.name}</h3>
+                <div>
+                  <h3 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                    {plan.name}
+                    {plan.isPopular && (
+                      <span className="text-amber-500" title="Popular">
+                        <Star size={16} fill="currentColor" />
+                      </span>
+                    )}
+                  </h3>
+                </div>
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
-                  plan.status === 'active'
+                  plan.isActive
                     ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-slate-100 text-slate-700'
                 }`}>
-                  {plan.status}
+                  {plan.isActive ? 'active' : 'inactive'}
                 </span>
               </div>
 
@@ -219,7 +250,7 @@ export const InvestmentPlans: React.FC = () => {
                     <TrendingUp size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 font-medium">ROI</p>
+                    <p className="text-xs text-slate-500 font-medium">ROI ({plan.roiType || 'daily'})</p>
                     <p className="text-lg font-bold text-navy-900">{plan.roi}%</p>
                   </div>
                 </div>
@@ -230,7 +261,7 @@ export const InvestmentPlans: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 font-medium">Duration</p>
-                    <p className="text-sm font-semibold text-slate-700">{plan.duration} Days</p>
+                    <p className="text-sm font-semibold text-slate-700">{plan.duration} {plan.durationType || 'days'}</p>
                   </div>
                 </div>
 
@@ -244,6 +275,19 @@ export const InvestmentPlans: React.FC = () => {
                      <p className="font-mono text-sm font-medium text-slate-700">${plan.maxDeposit.toLocaleString()}</p>
                    </div>
                 </div>
+
+                {(plan.totalInvestors || plan.totalInvested) && (
+                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                    <div>
+                      <p className="text-xs text-slate-400">Investors</p>
+                      <p className="font-mono text-sm font-medium text-emerald-600">{plan.totalInvestors || 0}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400">Total Invested</p>
+                      <p className="font-mono text-sm font-medium text-emerald-600">${(plan.totalInvested || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -251,12 +295,12 @@ export const InvestmentPlans: React.FC = () => {
               <button
                 onClick={() => handleToggleStatus(plan)}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                  plan.status === 'active'
+                  plan.isActive
                     ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                     : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                 }`}
               >
-                {plan.status === 'active' ? 'Deactivate' : 'Activate'}
+                {plan.isActive ? 'Deactivate' : 'Activate'}
               </button>
               <div className="flex gap-2">
                 <button

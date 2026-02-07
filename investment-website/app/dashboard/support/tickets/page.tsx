@@ -2,67 +2,38 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, Plus, Search, Filter } from 'lucide-react'
+import { MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, Plus, Search, Loader2 } from 'lucide-react'
+import { useGetMyTicketsQuery } from '@/store/api/ticketApi'
+import { Toast, ToastType } from '@/components/Toast'
 
 interface Ticket {
   id: string
-  ticketNumber: string
+  userId: string
   subject: string
-  status: 'open' | 'in-progress' | 'resolved' | 'closed'
-  priority: 'low' | 'normal' | 'high'
+  category: string
+  priority: 'low' | 'medium' | 'high'
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  rating?: number
+  feedback?: string
   createdAt: string
   updatedAt: string
-  category: string
-  unreadReplies: number
 }
 
 export default function MyTickets() {
-  const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all')
+  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null)
 
-  // TODO: Replace with actual API call
-  const [tickets] = useState<Ticket[]>([
-    {
-      id: '1',
-      ticketNumber: 'TKT-2024-001',
-      subject: 'Unable to withdraw funds',
-      status: 'in-progress',
-      priority: 'high',
-      createdAt: '2024-02-01T10:30:00Z',
-      updatedAt: '2024-02-02T14:20:00Z',
-      category: 'Withdrawal',
-      unreadReplies: 2,
-    },
-    {
-      id: '2',
-      ticketNumber: 'TKT-2024-002',
-      subject: 'Question about investment plan ROI',
-      status: 'resolved',
-      priority: 'normal',
-      createdAt: '2024-01-28T09:15:00Z',
-      updatedAt: '2024-01-29T11:45:00Z',
-      category: 'Investment',
-      unreadReplies: 0,
-    },
-    {
-      id: '3',
-      ticketNumber: 'TKT-2024-003',
-      subject: 'Account verification issue',
-      status: 'open',
-      priority: 'high',
-      createdAt: '2024-02-03T15:00:00Z',
-      updatedAt: '2024-02-03T15:00:00Z',
-      category: 'Account',
-      unreadReplies: 0,
-    },
-  ])
+  const { data, isLoading, error } = useGetMyTicketsQuery()
+
+  const tickets = data?.data?.attributes || []
 
   const getStatusIcon = (status: Ticket['status']) => {
     switch (status) {
       case 'open':
-        return <Clock className="text-amber-500" size={16} />
-      case 'in-progress':
-        return <AlertCircle className="text-blue-500" size={16} />
+        return <Clock className="text-blue-500" size={16} />
+      case 'in_progress':
+        return <AlertCircle className="text-amber-500" size={16} />
       case 'resolved':
         return <CheckCircle className="text-emerald-500" size={16} />
       case 'closed':
@@ -72,14 +43,14 @@ export default function MyTickets() {
 
   const getStatusBadge = (status: Ticket['status']) => {
     const styles = {
-      open: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-      'in-progress': 'bg-blue-500/10 text-blue-500 border-blue-500/30',
+      open: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
+      in_progress: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
       resolved: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',
       closed: 'bg-slate-500/10 text-slate-500 border-slate-500/30',
     }
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${styles[status]}`}>
-        {status.replace('-', ' ')}
+        {status.replace('_', ' ')}
       </span>
     )
   }
@@ -87,7 +58,7 @@ export default function MyTickets() {
   const getPriorityBadge = (priority: Ticket['priority']) => {
     const styles = {
       low: 'bg-slate-500/10 text-slate-400',
-      normal: 'bg-blue-500/10 text-blue-400',
+      medium: 'bg-blue-500/10 text-blue-400',
       high: 'bg-rose-500/10 text-rose-400',
     }
     return (
@@ -109,23 +80,45 @@ export default function MyTickets() {
     return date.toLocaleDateString()
   }
 
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = tickets.filter((ticket: Ticket) => {
     const matchesFilter = filter === 'all' || ticket.status === filter
     const matchesSearch = searchQuery === '' ||
       ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      ticket.id.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesFilter && matchesSearch
   })
 
   const stats = {
     total: tickets.length,
-    open: tickets.filter(t => t.status === 'open').length,
-    inProgress: tickets.filter(t => t.status === 'in-progress').length,
-    resolved: tickets.filter(t => t.status === 'resolved').length,
+    open: tickets.filter((t: Ticket) => t.status === 'open').length,
+    inProgress: tickets.filter((t: Ticket) => t.status === 'in_progress').length,
+    resolved: tickets.filter((t: Ticket) => t.status === 'resolved').length,
+  }
+
+  if (error) {
+    const errorMessage = (error as any)?.data?.message || 'Failed to load tickets'
+    return (
+      <div className="space-y-6">
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Support Tickets</h1>
+            <p className="text-slate-400 text-sm mt-1">View and manage your support requests</p>
+          </div>
+        </div>
+        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
+          <AlertCircle className="mx-auto text-rose-500 mb-4" size={48} />
+          <p className="text-rose-400 font-medium mb-2">Failed to Load Tickets</p>
+          <p className="text-slate-400 text-sm">{errorMessage}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -147,7 +140,7 @@ export default function MyTickets() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm">Total Tickets</p>
-              <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+              <p className="text-2xl font-bold text-white mt-1">{isLoading ? '-' : stats.total}</p>
             </div>
             <MessageSquare className="text-gold-500" size={24} />
           </div>
@@ -156,25 +149,25 @@ export default function MyTickets() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm">Open</p>
-              <p className="text-2xl font-bold text-amber-500 mt-1">{stats.open}</p>
+              <p className="text-2xl font-bold text-blue-500 mt-1">{isLoading ? '-' : stats.open}</p>
             </div>
-            <Clock className="text-amber-500" size={24} />
+            <Clock className="text-blue-500" size={24} />
           </div>
         </div>
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm">In Progress</p>
-              <p className="text-2xl font-bold text-blue-500 mt-1">{stats.inProgress}</p>
+              <p className="text-2xl font-bold text-amber-500 mt-1">{isLoading ? '-' : stats.inProgress}</p>
             </div>
-            <AlertCircle className="text-blue-500" size={24} />
+            <AlertCircle className="text-amber-500" size={24} />
           </div>
         </div>
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm">Resolved</p>
-              <p className="text-2xl font-bold text-emerald-500 mt-1">{stats.resolved}</p>
+              <p className="text-2xl font-bold text-emerald-500 mt-1">{isLoading ? '-' : stats.resolved}</p>
             </div>
             <CheckCircle className="text-emerald-500" size={24} />
           </div>
@@ -187,24 +180,26 @@ export default function MyTickets() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
           <input
             type="text"
-            placeholder="Search tickets by subject or number..."
+            placeholder="Search tickets by subject or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-900/50 border border-slate-800 rounded-lg pl-12 pr-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500"
+            disabled={isLoading}
           />
         </div>
         <div className="flex gap-2 flex-wrap">
-          {(['all', 'open', 'in-progress', 'resolved', 'closed'] as const).map((status) => (
+          {(['all', 'open', 'in_progress', 'resolved', 'closed'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
+              disabled={isLoading}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                 filter === status
                   ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/20'
                   : 'bg-slate-900/50 border border-slate-800 text-slate-400 hover:text-white'
-              }`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {status === 'all' ? 'All' : status.replace('-', ' ')}
+              {status === 'all' ? 'All' : status.replace('_', ' ')}
             </button>
           ))}
         </div>
@@ -212,17 +207,31 @@ export default function MyTickets() {
 
       {/* Tickets List */}
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-        {filteredTickets.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center">
+            <Loader2 className="mx-auto text-gold-500 mb-4 animate-spin" size={48} />
+            <p className="text-slate-400">Loading tickets...</p>
+          </div>
+        ) : filteredTickets.length === 0 ? (
           <div className="p-12 text-center">
             <MessageSquare className="mx-auto text-slate-600 mb-4" size={48} />
             <p className="text-slate-400">No tickets found</p>
             <p className="text-slate-500 text-sm mt-1">
               {searchQuery ? 'Try a different search term' : 'Create your first support ticket'}
             </p>
+            {!searchQuery && (
+              <Link
+                href="/dashboard/support"
+                className="inline-flex items-center gap-2 mt-4 bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                <Plus size={18} />
+                Create Ticket
+              </Link>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-slate-800">
-            {filteredTickets.map((ticket) => (
+            {filteredTickets.map((ticket: Ticket) => (
               <Link
                 key={ticket.id}
                 href={`/dashboard/support/tickets/${ticket.id}`}
@@ -236,13 +245,8 @@ export default function MyTickets() {
                         <h3 className="text-white font-medium group-hover:text-gold-500 transition-colors">
                           {ticket.subject}
                         </h3>
-                        {ticket.unreadReplies > 0 && (
-                          <span className="bg-gold-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                            {ticket.unreadReplies}
-                          </span>
-                        )}
                       </div>
-                      <p className="text-slate-500 text-sm">#{ticket.ticketNumber}</p>
+                      <p className="text-slate-500 text-sm">#{ticket.id.substring(0, 8).toUpperCase()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

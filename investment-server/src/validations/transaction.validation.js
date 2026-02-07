@@ -21,7 +21,7 @@ const createDeposit = {
 const createWithdrawal = {
   body: Joi.object().keys({
     amount: Joi.number().required().min(1),
-    paymentMethod: Joi.string().valid("bitcoin", "ethereum", "usdt", "bank_transfer", "paypal", "other"),
+    paymentMethod: Joi.string().valid("crypto", "ethereum", "bank", "payment_processor", "paypal", "stripe", "wallet", "other"),
     paymentGatewayId: Joi.string().custom(objectId),
     walletAddress: Joi.string().allow("", null),
     bankDetails: Joi.object().keys({

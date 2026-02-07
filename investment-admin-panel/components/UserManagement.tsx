@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { User } from '../types';
 import {
   Plus,
   Search,
@@ -17,12 +16,36 @@ import {
   Calendar,
   AlertCircle,
   DollarSign,
-  Minus
+  Minus,
+  X
 } from 'lucide-react';
-import { MOCK_USERS } from '../constants';
+import {
+  useGetAllUsersQuery,
+  useToggleBlockUserMutation,
+  useAddBalanceMutation,
+  useDeductBalanceMutation,
+} from '../store/api/userApi';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  status?: string;
+  balance?: number;
+  joinedDate?: string;
+  plan?: string;
+  phone?: string;
+  country?: string;
+}
 
 export const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  // RTK Query hooks
+  const { data: usersResponse, isLoading, error } = useGetAllUsersQuery({});
+  const [toggleBlockUser] = useToggleBlockUserMutation();
+  const [addBalanceMutation] = useAddBalanceMutation();
+  const [deductBalanceMutation] = useDeductBalanceMutation();
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddBalanceModalOpen, setIsAddBalanceModalOpen] = useState(false);
@@ -32,6 +55,28 @@ export const UserManagement: React.FC = () => {
   const [balanceReason, setBalanceReason] = useState('');
   const [newUser, setNewUser] = useState({ name: '', email: '', balance: '' });
   const [errors, setErrors] = useState({ name: '', email: '', balance: '' });
+
+  // Extract users from response (paginated data uses 'results')
+  const usersData = usersResponse?.data?.attributes || {};
+  const rawUsers = usersData.results || [];
+  const pagination = {
+    page: usersData.page || 1,
+    limit: usersData.limit || 10,
+    totalPages: usersData.totalPages || 1,
+    totalResults: usersData.totalResults || 0,
+  };
+
+  // Map API data to component format
+  const IMAGE_BASE_URL = 'http://10.10.11.87:8080';
+  const users = rawUsers.map((user: any) => ({
+    ...user,
+    name: user.fullName || `${user.firstName} ${user.lastName}`,
+    avatar: user.image ? `${IMAGE_BASE_URL}${user.image}` : `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}&background=random`,
+    joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+    status: user.isBlocked ? 'blocked' : 'active',
+    balance: user.walletBalance || 0,
+    plan: user.currentPlan || 'None',
+  }));
 
   // Validation Logic
   const validate = (field: string, value: string) => {
@@ -116,25 +161,20 @@ export const UserManagement: React.FC = () => {
     }
 
     try {
-      // TODO: Call API - POST /api/v1/admin/users/:userId/add-balance
-      // const response = await fetch(`/api/v1/admin/users/${balanceUser.id}/add-balance`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      //   body: JSON.stringify({ amount: parseFloat(balanceAmount), reason: balanceReason })
-      // });
-
-      // Update local state
-      setUsers(users.map(u =>
-        u.id === balanceUser.id
-          ? { ...u, balance: (u.balance || 0) + parseFloat(balanceAmount) }
-          : u
-      ));
+      await addBalanceMutation({
+        userId: balanceUser.id,
+        amount: parseFloat(balanceAmount),
+        note: balanceReason
+      }).unwrap();
 
       alert(`Successfully added $${balanceAmount} to ${balanceUser.name}'s balance`);
       setIsAddBalanceModalOpen(false);
       setBalanceUser(null);
-    } catch (error) {
-      alert('Failed to add balance');
+      setBalanceAmount('');
+      setBalanceReason('');
+    } catch (error: any) {
+      console.error('Failed to add balance:', error);
+      alert(error?.data?.message || 'Failed to add balance');
     }
   };
 
@@ -150,37 +190,58 @@ export const UserManagement: React.FC = () => {
     }
 
     try {
-      // TODO: Call API - POST /api/v1/admin/users/:userId/deduct-balance
-      // const response = await fetch(`/api/v1/admin/users/${balanceUser.id}/deduct-balance`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      //   body: JSON.stringify({ amount: parseFloat(balanceAmount), reason: balanceReason })
-      // });
-
-      // Update local state
-      setUsers(users.map(u =>
-        u.id === balanceUser.id
-          ? { ...u, balance: (u.balance || 0) - parseFloat(balanceAmount) }
-          : u
-      ));
+      await deductBalanceMutation({
+        userId: balanceUser.id,
+        amount: parseFloat(balanceAmount),
+        note: balanceReason
+      }).unwrap();
 
       alert(`Successfully deducted $${balanceAmount} from ${balanceUser.name}'s balance`);
       setIsDeductBalanceModalOpen(false);
       setBalanceUser(null);
-    } catch (error) {
-      alert('Failed to deduct balance');
+      setBalanceAmount('');
+      setBalanceReason('');
+    } catch (error: any) {
+      console.error('Failed to deduct balance:', error);
+      alert(error?.data?.message || 'Failed to deduct balance');
     }
   };
 
   // --- List View ---
-  const UserListView = () => (
+  const UserListView = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-navy-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600">Loading users...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="text-rose-600" size={32} />
+            </div>
+            <p className="text-rose-600 font-medium">Failed to load users</p>
+            <p className="text-slate-500 text-sm mt-2">Please try again later</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-display font-bold text-navy-900">User Management</h2>
           <p className="text-slate-500 text-sm">Manage user access and details.</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setNewUser({ name: '', email: '', balance: '' });
             setErrors({ name: '', email: '', balance: '' });
@@ -260,7 +321,8 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   // --- Detailed View ---
   const UserDetailView = ({ user }: { user: User }) => (
@@ -315,6 +377,18 @@ export const UserManagement: React.FC = () => {
               <h4 className="font-semibold text-navy-900 text-sm uppercase tracking-wide">Quick Actions</h4>
             </div>
             <div className="flex flex-col p-2">
+              <button
+                onClick={() => openAddBalanceModal(user)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-left"
+              >
+                <DollarSign size={18} /> Add Balance
+              </button>
+              <button
+                onClick={() => openDeductBalanceModal(user)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left"
+              >
+                <Minus size={18} /> Deduct Balance
+              </button>
               <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-navy-900 rounded-lg transition-colors text-left">
                 <Mail size={18} className="text-slate-400" /> Send Email
               </button>
@@ -436,6 +510,140 @@ export const UserManagement: React.FC = () => {
   return (
     <div>
       {selectedUser ? <UserDetailView user={selectedUser} /> : <UserListView />}
+
+      {/* Add Balance Modal */}
+      {isAddBalanceModalOpen && balanceUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-navy-900 text-lg">Add Balance</h3>
+              <button onClick={() => setIsAddBalanceModalOpen(false)} className="text-slate-400 hover:text-navy-900 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">User</label>
+                <input
+                  type="text"
+                  disabled
+                  value={balanceUser.name}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount ($)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={balanceAmount}
+                  onChange={(e) => setBalanceAmount(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-navy-500 focus:border-transparent"
+                  placeholder="100.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reason (Optional)</label>
+                <textarea
+                  value={balanceReason}
+                  onChange={(e) => setBalanceReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-navy-500 focus:border-transparent resize-none"
+                  placeholder="Bonus, promotion, etc."
+                />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddBalanceModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddBalance}
+                  className="flex-1 py-2.5 rounded-lg bg-navy-900 text-white font-medium hover:bg-navy-800 shadow-lg shadow-navy-900/20 transition-colors"
+                >
+                  Add Balance
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deduct Balance Modal */}
+      {isDeductBalanceModalOpen && balanceUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-navy-900 text-lg">Deduct Balance</h3>
+              <button onClick={() => setIsDeductBalanceModalOpen(false)} className="text-slate-400 hover:text-navy-900 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">User</label>
+                <input
+                  type="text"
+                  disabled
+                  value={balanceUser.name}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Current Balance</label>
+                <input
+                  type="text"
+                  disabled
+                  value={`$${balanceUser.balance?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}`}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount to Deduct ($)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={balanceUser.balance || 0}
+                  value={balanceAmount}
+                  onChange={(e) => setBalanceAmount(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-navy-500 focus:border-transparent"
+                  placeholder="50.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reason (Optional)</label>
+                <textarea
+                  value={balanceReason}
+                  onChange={(e) => setBalanceReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-navy-500 focus:border-transparent resize-none"
+                  placeholder="Penalty, correction, etc."
+                />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDeductBalanceModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeductBalance}
+                  className="flex-1 py-2.5 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-colors"
+                >
+                  Deduct Balance
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {isAddModalOpen && (

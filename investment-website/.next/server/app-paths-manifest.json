@@ -1,7 +1,9 @@
 {
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/plans/history/page": "app/dashboard/plans/history/page.js",
-  "/dashboard/settings/page": "app/dashboard/settings/page.js",
-  "/dashboard/wallet/stats/page": "app/dashboard/wallet/stats/page.js"
+  "/dashboard/withdraw/page": "app/dashboard/withdraw/page.js",
+  "/dashboard/wallet/stats/page": "app/dashboard/wallet/stats/page.js",
+  "/dashboard/transactions/page": "app/dashboard/transactions/page.js",
+  "/dashboard/deposit/page": "app/dashboard/deposit/page.js",
+  "/dashboard/transactions/[id]/page": "app/dashboard/transactions/[id]/page.js",
+  "/dashboard/plans/invest/page": "app/dashboard/plans/invest/page.js",
+  "/dashboard/withdraw/history/page": "app/dashboard/withdraw/history/page.js"
 }

@@ -10,7 +10,8 @@
       "Bash(node:*)",
       "Bash(del \"C:\\\\Users\\\\shada\\\\Desktop\\\\New Projcet\\\\Investment Project\\\\investment-server\\\\update_collection.js\")",
       "Bash(npm install:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
