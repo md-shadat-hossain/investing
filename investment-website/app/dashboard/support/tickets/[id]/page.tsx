@@ -7,37 +7,48 @@ import { ArrowLeft, Send, Star, Clock, CheckCircle, User, Shield, Paperclip, Loa
 import { useGetTicketByIdQuery, useAddReplyMutation, useRateTicketMutation } from '@/store/api/ticketApi'
 import { Toast, ToastType } from '@/components/Toast'
 
-interface TicketReply {
-  id: string
-  ticketId: string
-  userId: string
-  message: string
-  isAdminReply: boolean
-  user?: {
-    id: string
-    firstName: string
-    lastName: string
-    role: string
+interface TicketMessage {
+  _id: string
+  sender?: {
+    _id?: string
+    id?: string
+    fullName?: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    image?: string
   }
+  senderRole: 'user' | 'admin' | 'superAdmin'
+  message: string
+  attachments?: string[]
+  isRead?: boolean
   createdAt: string
 }
 
 interface Ticket {
   id: string
-  userId: string
+  _id?: string
+  ticketId?: string
+  user?: {
+    _id?: string
+    id?: string
+    fullName?: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    image?: string
+  }
   subject: string
   category: string
   priority: 'low' | 'normal' | 'high' | 'urgent'
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  status: 'open' | 'in_progress' | 'waiting_reply' | 'resolved' | 'closed'
   rating?: number
   feedback?: string
-  user?: {
-    id: string
-    firstName: string
-    lastName: string
-    email: string
+  messages?: TicketMessage[]
+  assignedTo?: {
+    fullName?: string
+    email?: string
   }
-  replies?: TicketReply[]
   createdAt: string
   updatedAt: string
 }
@@ -63,7 +74,7 @@ export default function TicketDetail() {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [ticket?.replies])
+  }, [ticket?.messages])
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,23 +155,25 @@ export default function TicketDetail() {
     })
   }
 
-  const getStatusColor = (status: Ticket['status']) => {
-    const colors = {
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
       open: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
       in_progress: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
+      waiting_reply: 'text-purple-500 bg-purple-500/10 border-purple-500/30',
       resolved: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
       closed: 'text-slate-500 bg-slate-500/10 border-slate-500/30',
     }
-    return colors[status]
+    return colors[status] || 'text-slate-500 bg-slate-500/10 border-slate-500/30'
   }
 
-  const getPriorityColor = (priority: Ticket['priority']) => {
-    const colors = {
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
       low: 'text-slate-400 bg-slate-500/10',
-      medium: 'text-blue-400 bg-blue-500/10',
+      normal: 'text-blue-400 bg-blue-500/10',
       high: 'text-rose-400 bg-rose-500/10',
+      urgent: 'text-rose-400 bg-rose-500/10',
     }
-    return colors[priority]
+    return colors[priority] || 'text-slate-400 bg-slate-500/10'
   }
 
   if (isLoading) {
@@ -185,7 +198,7 @@ export default function TicketDetail() {
     )
   }
 
-  if (error || !ticket) {
+  if (!ticket && (error || !isLoading)) {
     const errorMessage = (error as any)?.data?.message || 'Ticket not found'
     return (
       <div className="space-y-6">
@@ -216,11 +229,6 @@ export default function TicketDetail() {
     )
   }
 
-  // Create initial message from ticket data if no replies exist yet
-  const allMessages = ticket.replies && ticket.replies.length > 0
-    ? ticket.replies
-    : []
-
   return (
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -244,7 +252,7 @@ export default function TicketDetail() {
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            #{ticket.id.substring(0, 8).toUpperCase()} • {ticket.category} • Created {formatTime(ticket.createdAt)}
+            #{ticket.ticketId || (ticket.id || ticket._id || '').substring(0, 8).toUpperCase()} • {ticket.category} • Created {formatTime(ticket.createdAt)}
           </p>
         </div>
       </div>
@@ -313,23 +321,25 @@ export default function TicketDetail() {
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
         <div className="p-6 border-b border-slate-800">
           <h2 className="text-white font-semibold">Conversation</h2>
+          <p className="text-slate-500 text-sm mt-0.5">{(ticket.messages || []).length} message{(ticket.messages || []).length !== 1 ? 's' : ''}</p>
         </div>
         <div className="p-6 space-y-6 max-h-[600px] overflow-y-auto">
-          {allMessages.length === 0 ? (
+          {(!ticket.messages || ticket.messages.length === 0) ? (
             <div className="text-center py-8">
               <p className="text-slate-400">No messages yet. Send a reply to start the conversation.</p>
             </div>
           ) : (
             <>
-              {allMessages.map((message: TicketReply) => {
-                const isUser = !message.isAdminReply
-                const senderName = message.isAdminReply
-                  ? (message.user ? `${message.user.firstName} ${message.user.lastName}` : 'Support Team')
+              {ticket.messages.map((msg: TicketMessage, idx: number) => {
+                const isAdmin = msg.senderRole === 'admin' || msg.senderRole === 'superAdmin'
+                const isUser = msg.senderRole === 'user'
+                const senderName = isAdmin
+                  ? (msg.sender?.fullName || msg.sender?.email || 'Support Team')
                   : 'You'
 
                 return (
                   <div
-                    key={message.id}
+                    key={msg._id || idx}
                     className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                   >
                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
@@ -340,18 +350,21 @@ export default function TicketDetail() {
                       {isUser ? <User size={20} /> : <Shield size={20} />}
                     </div>
                     <div className={`flex-1 max-w-2xl ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
                         <span className={`text-sm font-medium ${isUser ? 'text-gold-500' : 'text-blue-500'}`}>
                           {senderName}
                         </span>
-                        <span className="text-xs text-slate-500">{formatTime(message.createdAt)}</span>
+                        {isAdmin && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-semibold uppercase">Admin</span>
+                        )}
+                        <span className="text-xs text-slate-500">{formatTime(msg.createdAt)}</span>
                       </div>
                       <div className={`p-4 rounded-lg ${
                         isUser
-                          ? 'bg-gold-500/10 border border-gold-500/30'
-                          : 'bg-slate-800/50 border border-slate-700'
+                          ? 'bg-gold-500/10 border border-gold-500/30 rounded-tr-sm'
+                          : 'bg-slate-800/50 border border-slate-700 rounded-tl-sm'
                       }`}>
-                        <p className="text-slate-200 text-sm whitespace-pre-wrap">{message.message}</p>
+                        <p className="text-slate-200 text-sm whitespace-pre-wrap">{msg.message}</p>
                       </div>
                     </div>
                   </div>

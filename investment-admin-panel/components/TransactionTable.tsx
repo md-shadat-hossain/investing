@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Transaction } from '../types';
-import { Check, X, FileText, ExternalLink } from 'lucide-react';
+import { Check, X, FileText, ExternalLink, Eye } from 'lucide-react';
 import { MaskedData } from './ui/MaskedData';
 
 interface TransactionTableProps {
@@ -16,6 +17,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   onApprove, 
   onReject 
 }) => {
+  const navigate = useNavigate();
   const [selectedProof, setSelectedProof] = useState<string | null>(null);
 
   const formatDate = (dateStr: string) => {
@@ -26,6 +28,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       minute: '2-digit'
     });
   };
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://10.10.11.87:8080';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
@@ -57,21 +61,27 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </td>
               </tr>
             ) : (
-              transactions.map((tx) => (
+              transactions.map((tx: any) => (
                 <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                    {formatDate(tx.date)}
+                    {formatDate(tx.createdAt)}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src={tx.user.avatar} 
-                        alt={tx.user.name} 
-                        className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                      />
+                      {tx.user?.image ? (
+                        <img
+                          src={`${API_BASE_URL}${tx.user.image}`}
+                          alt={tx.user.fullName || tx.user.email}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-navy-100 text-navy-600 flex items-center justify-center font-bold text-xs border border-slate-200">
+                          {tx.user?.fullName?.[0] || tx.user?.email?.[0] || 'U'}
+                        </div>
+                      )}
                       <div>
-                        <div className="text-sm font-medium text-navy-900">{tx.user.name}</div>
-                        <div className="text-xs text-slate-500">{tx.user.email}</div>
+                        <div className="text-sm font-medium text-navy-900">{tx.user?.fullName || tx.user?.email || 'Unknown'}</div>
+                        <div className="text-xs text-slate-500">{tx.user?.email || '-'}</div>
                       </div>
                     </div>
                   </td>
@@ -79,21 +89,24 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     <span className={tx.type === 'deposit' ? 'text-emerald-500' : 'text-rose-600'}>
                       {tx.type === 'deposit' ? '+' : '-'}
                     </span>
-                    ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ${tx.netAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-navy-900">{tx.method}</div>
-                    {tx.accountNumber && (
-                      <MaskedData data={tx.accountNumber} className="text-xs text-slate-500" />
+                    <div className="text-sm text-navy-900 capitalize">{tx.paymentMethod || '-'}</div>
+                    {tx.walletAddress && (
+                      <MaskedData data={tx.walletAddress} className="text-xs text-slate-500" />
+                    )}
+                    {tx.txHash && (
+                      <MaskedData data={tx.txHash} className="text-xs text-slate-500" />
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500 font-mono">
                     <MaskedData data={tx.transactionId} visibleCount={6} />
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {tx.proofUrl ? (
-                      <button 
-                        onClick={() => setSelectedProof(tx.proofUrl || null)}
+                    {tx.proofImage ? (
+                      <button
+                        onClick={() => setSelectedProof(`${API_BASE_URL}${tx.proofImage}`)}
                         className="p-2 text-slate-400 hover:text-navy-900 transition-colors"
                         title="View Proof"
                       >
@@ -105,14 +118,21 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <button
+                        onClick={() => navigate(`/history/${tx.id}`)}
+                        className="h-10 w-10 flex items-center justify-center rounded-lg bg-slate-50 text-slate-600 hover:bg-navy-900 hover:text-white transition-all shadow-sm border border-slate-200 hover:shadow-md"
+                        title="View Details"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button
                         onClick={() => onApprove(tx.id)}
                         className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-100 hover:shadow-md"
                         title="Approve"
                       >
                         <Check size={20} strokeWidth={2.5} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => onReject(tx.id)}
                         className="h-10 w-10 flex items-center justify-center rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-100 hover:shadow-md"
                         title="Reject"

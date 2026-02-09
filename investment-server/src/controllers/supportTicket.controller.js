@@ -59,7 +59,8 @@ const getTicket = catchAsync(async (req, res) => {
   }
 
   // Check if user owns ticket or is admin
-  if (req.user.role === "user" && ticket.user._id.toString() !== req.user._id.toString()) {
+  const ticketUserId = ticket.user?._id || ticket.user;
+  if (req.user.role === "user" && (!ticketUserId || ticketUserId.toString() !== req.user._id.toString())) {
     throw new ApiError(httpStatus.FORBIDDEN, "Access denied");
   }
 
@@ -95,7 +96,7 @@ const addReply = catchAsync(async (req, res) => {
     );
   } else {
     await notificationService.sendToUser(
-      ticket.user._id,
+      ticket.user?._id || ticket.user,
       "Ticket Reply",
       `An admin has replied to your support ticket #${ticket.ticketId}`,
       "support"
@@ -123,7 +124,7 @@ const updateTicketStatus = catchAsync(async (req, res) => {
 
   // Notify user
   await notificationService.sendToUser(
-    ticket.user._id,
+    ticket.user?._id || ticket.user,
     "Ticket Status Updated",
     `Your support ticket #${ticket.ticketId} status has been updated to: ${status}`,
     "support"

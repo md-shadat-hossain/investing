@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { TransactionTable } from './components/TransactionTable';
 import { TransactionHistory } from './components/TransactionHistory';
+import { TransactionDetail } from './components/TransactionDetail';
 import { UserManagement } from './components/UserManagement';
 import { InvestmentPlans } from './components/InvestmentPlans';
 import { PaymentGateways } from './components/PaymentGateways';
@@ -20,6 +21,13 @@ import { MOCK_TRANSACTIONS, CHART_DATA } from './constants';
 import { Transaction } from './types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle, FileText, Users } from 'lucide-react';
+import {
+  useGetPendingTransactionsQuery,
+  useGetAllTransactionsQuery,
+  useGetTransactionStatsQuery,
+  useApproveTransactionMutation,
+  useRejectTransactionMutation
+} from './store/api/transactionApi';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -218,32 +226,51 @@ const StatsCard = ({ title, value, change, icon: Icon, trend, color, badge }: an
 
 // --- App Wrapper for Router logic ---
 const AppContent = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [isSystemPaused, setIsSystemPaused] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch data from API
+  const { data: pendingData } = useGetPendingTransactionsQuery({});
+  const { data: allTransactionsData } = useGetAllTransactionsQuery({ page: 1, limit: 100 });
+  const { data: statsData } = useGetTransactionStatsQuery();
+  const [approveTransaction] = useApproveTransactionMutation();
+  const [rejectTransaction] = useRejectTransactionMutation();
+
+  // Extract transactions from API response
+  const pendingTransactions = pendingData?.data?.attributes || [];
+  const allTransactions = allTransactionsData?.data?.attributes?.results || [];
+  const apiStats = statsData?.data?.attributes || {};
+
   // Computed Stats
   const stats = useMemo(() => {
     return {
-      pendingDeposits: transactions.filter(t => t.status === 'pending' && t.type === 'deposit').length,
-      pendingWithdrawals: transactions.filter(t => t.status === 'pending' && t.type === 'withdrawal').length,
+      pendingDeposits: pendingTransactions.filter((t: any) => t.type === 'deposit').length,
+      pendingWithdrawals: pendingTransactions.filter((t: any) => t.type === 'withdraw').length,
     };
-  }, [transactions]);
+  }, [pendingTransactions]);
 
   // Handlers
-  const handleAction = (id: string, action: 'approved' | 'rejected') => {
-    setTransactions(prev => prev.map(t => 
-      t.id === id ? { ...t, status: action } : t
-    ));
+  const handleAction = async (id: string, action: 'approved' | 'rejected') => {
+    try {
+      if (action === 'approved') {
+        await approveTransaction({ transactionId: id }).unwrap();
+      } else {
+        await rejectTransaction({ transactionId: id }).unwrap();
+      }
 
-    const tx = transactions.find(t => t.id === id);
-    const actionText = action === 'approved' ? 'Approved' : 'Rejected';
-    setToast({
-      message: `${tx?.type === 'deposit' ? 'Deposit' : 'Withdrawal'} #${id} ${actionText} Successfully`,
-      type: action === 'approved' ? 'success' : 'error'
-    });
+      const actionText = action === 'approved' ? 'Approved' : 'Rejected';
+      setToast({
+        message: `Transaction ${actionText} Successfully`,
+        type: action === 'approved' ? 'success' : 'error'
+      });
+    } catch (error: any) {
+      setToast({
+        message: error?.data?.message || `Failed to ${action} transaction`,
+        type: 'error'
+      });
+    }
   };
 
   const handleGenerateReport = () => {
@@ -267,9 +294,8 @@ const AppContent = () => {
     });
   };
 
-  const pendingTransactions = transactions.filter(t => t.status === 'pending');
-  const depositTransactions = transactions.filter(t => t.status === 'pending' && t.type === 'deposit');
-  const withdrawalTransactions = transactions.filter(t => t.status === 'pending' && t.type === 'withdrawal');
+  const depositTransactions = pendingTransactions.filter((t: any) => t.type === 'deposit');
+  const withdrawalTransactions = pendingTransactions.filter((t: any) => t.type === 'withdraw');
 
   return (
     <Layout>
@@ -369,7 +395,8 @@ const AppContent = () => {
 
         <Route path="/gateways" element={<ProtectedRoute><PaymentGateways /></ProtectedRoute>} />
 
-        <Route path="/history" element={<ProtectedRoute><TransactionHistory transactions={transactions} /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><TransactionHistory transactions={allTransactions} /></ProtectedRoute>} />
+        <Route path="/history/:transactionId" element={<ProtectedRoute><TransactionDetail /></ProtectedRoute>} />
 
         {/* New Routes */}
         <Route path="/profits" element={<ProtectedRoute><ProfitDistribution /></ProtectedRoute>} />

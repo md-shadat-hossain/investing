@@ -192,7 +192,8 @@ const rateTicket = async (ticketId, userId, rating, feedback = null) => {
     throw new ApiError(httpStatus.NOT_FOUND, "Ticket not found");
   }
 
-  if (ticket.user._id.toString() !== userId.toString()) {
+  const ticketUserId = ticket.user?._id || ticket.user;
+  if (!ticketUserId || ticketUserId.toString() !== userId.toString()) {
     throw new ApiError(httpStatus.FORBIDDEN, "You can only rate your own tickets");
   }
 

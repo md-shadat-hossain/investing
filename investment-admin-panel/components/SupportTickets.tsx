@@ -1,161 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { MessageSquare, Clock, CheckCircle, X, Send, User, AlertCircle, Filter, Search } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Clock, CheckCircle, X, Send, AlertCircle, Search, ChevronDown, Check, ArrowLeft, Star } from 'lucide-react';
+import { useGetAllTicketsQuery, useGetTicketStatsQuery, useGetTicketByIdQuery, useUpdateTicketStatusMutation, useAssignTicketMutation, useAddReplyMutation } from '../store/api/ticketApi';
+import { Toast, ToastType } from './ui/Toast';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store/store';
 
-interface Ticket {
-  _id: string;
-  user: {
-    _id: string;
-    fullName: string;
-    email: string;
-    image?: string;
-  };
-  subject: string;
-  message: string;
-  category: 'general' | 'deposit' | 'withdrawal' | 'investment' | 'technical' | 'other';
-  priority: 'low' | 'medium' | 'high';
-  status: 'open' | 'in-progress' | 'resolved' | 'closed';
-  assignedTo?: {
-    _id: string;
-    fullName: string;
-  };
-  rating?: number;
-  replies: Reply[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Reply {
-  _id: string;
-  message: string;
-  sender: {
-    _id: string;
-    fullName: string;
-    role: 'user' | 'admin';
-  };
-  createdAt: string;
-}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://10.10.11.87:8080';
+const IMAGE_BASE = API_BASE_URL.replace('/api/v1', '');
 
 export const SupportTickets: React.FC = () => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [page, setPage] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock data for demonstration
-  useEffect(() => {
-    // TODO: Replace with actual API calls
-    setTickets([
-      {
-        _id: '1',
-        user: {
-          _id: 'u1',
-          fullName: 'John Doe',
-          email: 'john@example.com',
-          image: 'https://picsum.photos/id/1005/100/100'
-        },
-        subject: 'Cannot withdraw funds',
-        message: 'I am trying to withdraw $500 but the system shows an error. Please help.',
-        category: 'withdrawal',
-        priority: 'high',
-        status: 'open',
-        replies: [],
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        updatedAt: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        _id: '2',
-        user: {
-          _id: 'u2',
-          fullName: 'Jane Smith',
-          email: 'jane@example.com',
-          image: 'https://picsum.photos/id/1011/100/100'
-        },
-        subject: 'How to verify my account?',
-        message: 'What documents do I need to submit for KYC verification?',
-        category: 'general',
-        priority: 'medium',
-        status: 'in-progress',
-        assignedTo: {
-          _id: 'a1',
-          fullName: 'Admin User'
-        },
-        replies: [
-          {
-            _id: 'r1',
-            message: 'You need to submit a government-issued ID and proof of address.',
-            sender: {
-              _id: 'a1',
-              fullName: 'Admin User',
-              role: 'admin'
-            },
-            createdAt: new Date(Date.now() - 1800000).toISOString()
-          }
-        ],
-        createdAt: new Date(Date.now() - 7200000).toISOString(),
-        updatedAt: new Date(Date.now() - 1800000).toISOString()
-      }
-    ]);
-  }, []);
+  // API hooks
+  const queryParams: any = { page, limit: 50 };
+  if (statusFilter !== 'all') queryParams.status = statusFilter;
+  if (priorityFilter !== 'all') queryParams.priority = priorityFilter;
 
+  const { data: ticketsData, isLoading: ticketsLoading } = useGetAllTicketsQuery(queryParams);
+  const { data: statsData } = useGetTicketStatsQuery();
+  const { data: ticketDetailData, isLoading: detailLoading } = useGetTicketByIdQuery(selectedTicketId || '', { skip: !selectedTicketId });
+  const [updateTicketStatus] = useUpdateTicketStatusMutation();
+  const [assignTicket] = useAssignTicketMutation();
+  const [addReply, { isLoading: replying }] = useAddReplyMutation();
+
+  const tickets = ticketsData?.data?.attributes?.results || [];
+  const totalResults = ticketsData?.data?.attributes?.totalResults || 0;
+  const selectedTicket = ticketDetailData?.data?.attributes || null;
+
+  const rawStats = statsData?.data?.attributes || {};
+  const byStatus = rawStats.byStatus || {};
   const stats = {
-    total: tickets.length,
-    open: tickets.filter(t => t.status === 'open').length,
-    inProgress: tickets.filter(t => t.status === 'in-progress').length,
-    resolved: tickets.filter(t => t.status === 'resolved').length
+    total: (byStatus.open || 0) + (byStatus.in_progress || 0) + (byStatus.waiting_reply || 0) + (byStatus.resolved || 0) + (byStatus.closed || 0),
+    open: (byStatus.open || 0) + (byStatus.waiting_reply || 0),
+    inProgress: byStatus.in_progress || 0,
+    resolved: (byStatus.resolved || 0) + (byStatus.closed || 0),
+    avgRating: rawStats.averageRating || 0,
   };
 
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch =
-      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  // Scroll to bottom of messages when ticket changes
+  useEffect(() => {
+    if (selectedTicket) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedTicket]);
 
-    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
-
-    return matchesSearch && matchesStatus && matchesPriority;
+  // Filter tickets by search (client-side on current page)
+  const filteredTickets = tickets.filter((ticket: any) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (
+      ticket.subject?.toLowerCase().includes(s) ||
+      ticket.ticketId?.toLowerCase().includes(s) ||
+      ticket.user?.fullName?.toLowerCase().includes(s) ||
+      ticket.user?.email?.toLowerCase().includes(s)
+    );
   });
 
   const handleReply = async () => {
-    if (!selectedTicket || !replyMessage.trim()) return;
-
-    setLoading(true);
+    if (!selectedTicketId || !replyMessage.trim()) return;
     try {
-      // TODO: Call API - POST /api/v1/tickets/:ticketId/reply
-      alert('Reply sent successfully');
+      await addReply({ ticketId: selectedTicketId, message: replyMessage.trim() }).unwrap();
       setReplyMessage('');
-    } catch (error) {
-      alert('Failed to send reply');
-    } finally {
-      setLoading(false);
+      setToast({ message: 'Reply sent successfully', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error?.data?.message || 'Failed to send reply', type: 'error' });
     }
   };
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
-      // TODO: Call API - PATCH /api/v1/tickets/admin/:ticketId/status
-      alert(`Ticket status updated to ${newStatus}`);
-    } catch (error) {
-      alert('Failed to update ticket status');
+      await updateTicketStatus({ ticketId, status: newStatus }).unwrap();
+      setToast({ message: `Ticket status updated to ${newStatus.replace('_', ' ')}`, type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error?.data?.message || 'Failed to update status', type: 'error' });
     }
   };
 
-  const handleAssignTicket = async (ticketId: string, adminId: string) => {
+  const handleAssignToMe = async (ticketId: string) => {
+    if (!currentUser?.id) return;
     try {
-      // TODO: Call API - POST /api/v1/tickets/admin/:ticketId/assign
-      alert('Ticket assigned successfully');
-    } catch (error) {
-      alert('Failed to assign ticket');
+      await assignTicket({ ticketId, adminId: currentUser.id }).unwrap();
+      setToast({ message: 'Ticket assigned to you', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error?.data?.message || 'Failed to assign ticket', type: 'error' });
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case 'urgent': return 'text-rose-700 bg-rose-100';
       case 'high': return 'text-rose-700 bg-rose-100';
-      case 'medium': return 'text-amber-700 bg-amber-100';
+      case 'normal': return 'text-amber-700 bg-amber-100';
       case 'low': return 'text-blue-700 bg-blue-100';
       default: return 'text-slate-700 bg-slate-100';
     }
@@ -164,15 +107,38 @@ export const SupportTickets: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'text-blue-700 bg-blue-100';
-      case 'in-progress': return 'text-amber-700 bg-amber-100';
+      case 'in_progress': return 'text-amber-700 bg-amber-100';
+      case 'waiting_reply': return 'text-purple-700 bg-purple-100';
       case 'resolved': return 'text-emerald-700 bg-emerald-100';
       case 'closed': return 'text-slate-700 bg-slate-100';
       default: return 'text-slate-700 bg-slate-100';
     }
   };
 
+  const formatStatus = (status: string) => status.replace(/_/g, ' ');
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
   return (
     <div className="space-y-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-display font-bold text-navy-900">Support Tickets</h1>
@@ -198,9 +164,11 @@ export const SupportTickets: React.FC = () => {
             <div>
               <p className="text-sm text-slate-500 font-medium">Open</p>
               <h3 className="text-2xl font-bold text-navy-900 mt-1">{stats.open}</h3>
-              <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
-                <AlertCircle size={12} /> Needs attention
-              </p>
+              {stats.open > 0 && (
+                <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
+                  <AlertCircle size={12} /> Needs attention
+                </p>
+              )}
             </div>
             <div className="p-3 bg-blue-50 rounded-xl">
               <Clock className="text-blue-600" size={24} />
@@ -226,9 +194,11 @@ export const SupportTickets: React.FC = () => {
             <div>
               <p className="text-sm text-slate-500 font-medium">Resolved</p>
               <h3 className="text-2xl font-bold text-navy-900 mt-1">{stats.resolved}</h3>
-              <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
-                <CheckCircle size={12} /> Completed
-              </p>
+              {stats.avgRating > 0 && (
+                <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
+                  <Star size={12} /> Avg Rating: {stats.avgRating.toFixed(1)}/5
+                </p>
+              )}
             </div>
             <div className="p-3 bg-emerald-50 rounded-xl">
               <CheckCircle className="text-emerald-600" size={24} />
@@ -240,143 +210,215 @@ export const SupportTickets: React.FC = () => {
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tickets List */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-100">
+        <div className={`bg-white rounded-xl shadow-sm border border-slate-100 ${selectedTicketId ? 'hidden lg:block' : ''} lg:col-span-1`}>
           <div className="p-4 border-b border-slate-100">
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
                 placeholder="Search tickets..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-transparent text-sm"
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500 text-sm outline-none"
               />
             </div>
             <div className="flex gap-2">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-navy-500"
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500 outline-none bg-white"
               >
                 <option value="all">All Status</option>
                 <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
+                <option value="in_progress">In Progress</option>
+                <option value="waiting_reply">Waiting Reply</option>
                 <option value="resolved">Resolved</option>
                 <option value="closed">Closed</option>
               </select>
               <select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-navy-500"
+                onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500 outline-none bg-white"
               >
                 <option value="all">All Priority</option>
+                <option value="urgent">Urgent</option>
                 <option value="high">High</option>
-                <option value="medium">Medium</option>
+                <option value="normal">Normal</option>
                 <option value="low">Low</option>
               </select>
             </div>
           </div>
 
           <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-            {filteredTickets.length === 0 ? (
+            {ticketsLoading ? (
+              <div className="p-8 text-center">
+                <div className="w-8 h-8 border-4 border-navy-900 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-sm text-slate-400">Loading tickets...</p>
+              </div>
+            ) : filteredTickets.length === 0 ? (
               <div className="p-8 text-center text-slate-400">
                 <MessageSquare size={48} className="mx-auto mb-3 opacity-20" />
                 <p>No tickets found</p>
               </div>
             ) : (
-              filteredTickets.map((ticket) => (
+              filteredTickets.map((ticket: any) => (
                 <div
-                  key={ticket._id}
-                  onClick={() => setSelectedTicket(ticket)}
+                  key={ticket.id || ticket._id}
+                  onClick={() => setSelectedTicketId(ticket.id || ticket._id)}
                   className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${
-                    selectedTicket?._id === ticket._id ? 'bg-navy-50 border-l-4 border-navy-900' : ''
+                    selectedTicketId === (ticket.id || ticket._id) ? 'bg-navy-50 border-l-4 border-l-navy-900' : 'border-l-4 border-l-transparent'
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <img
-                      src={ticket.user.image || '/uploads/users/user.png'}
-                      alt={ticket.user.fullName}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
+                    {ticket.user?.image ? (
+                      <img
+                        src={`${IMAGE_BASE}${ticket.user.image}`}
+                        alt={ticket.user.fullName}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {(ticket.user?.fullName?.[0] || ticket.user?.email?.[0] || '?').toUpperCase()}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPriorityColor(ticket.priority)}`}>
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${getPriorityColor(ticket.priority)}`}>
                           {ticket.priority}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(ticket.status)}`}>
-                          {ticket.status}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${getStatusColor(ticket.status)}`}>
+                          {formatStatus(ticket.status)}
                         </span>
                       </div>
                       <h4 className="font-medium text-sm text-navy-900 truncate">{ticket.subject}</h4>
-                      <p className="text-xs text-slate-500 mt-1">{ticket.user.fullName}</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {new Date(ticket.createdAt).toLocaleString()}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-slate-500 truncate">{ticket.user?.fullName || ticket.user?.email}</p>
+                        <p className="text-xs text-slate-400 flex-shrink-0 ml-2">{timeAgo(ticket.createdAt)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))
             )}
           </div>
+
+          {/* Pagination footer */}
+          {totalResults > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-500 text-center">
+              Showing {filteredTickets.length} of {totalResults} tickets
+            </div>
+          )}
         </div>
 
         {/* Ticket Details */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100">
-          {!selectedTicket ? (
-            <div className="flex items-center justify-center h-full min-h-[400px] text-slate-400">
+        <div className={`lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 ${!selectedTicketId ? '' : ''}`}>
+          {!selectedTicketId ? (
+            <div className="flex items-center justify-center h-full min-h-[500px] text-slate-400">
               <div className="text-center">
                 <MessageSquare size={64} className="mx-auto mb-4 opacity-20" />
-                <p>Select a ticket to view details</p>
+                <p className="font-medium">Select a ticket to view details</p>
+                <p className="text-sm mt-1">Click on a ticket from the list</p>
+              </div>
+            </div>
+          ) : detailLoading ? (
+            <div className="flex items-center justify-center h-full min-h-[500px]">
+              <div className="text-center">
+                <div className="w-10 h-10 border-4 border-navy-900 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-sm text-slate-400">Loading ticket...</p>
+              </div>
+            </div>
+          ) : !selectedTicket ? (
+            <div className="flex items-center justify-center h-full min-h-[500px] text-slate-400">
+              <div className="text-center">
+                <AlertCircle size={48} className="mx-auto mb-3 opacity-20" />
+                <p>Ticket not found</p>
               </div>
             </div>
           ) : (
-            <>
+            <div className="flex flex-col h-full max-h-[calc(100vh-280px)]">
               {/* Ticket Header */}
-              <div className="p-6 border-b border-slate-100">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={selectedTicket.user.image || '/uploads/users/user.png'}
-                      alt={selectedTicket.user.fullName}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
+              <div className="p-5 border-b border-slate-100 flex-shrink-0">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    {/* Mobile back button */}
+                    <button
+                      onClick={() => setSelectedTicketId(null)}
+                      className="lg:hidden p-1.5 hover:bg-slate-100 rounded-lg transition-colors mt-0.5"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                    {selectedTicket.user?.image ? (
+                      <img
+                        src={`${IMAGE_BASE}${selectedTicket.user.image}`}
+                        alt={selectedTicket.user.fullName}
+                        className="w-11 h-11 rounded-full object-cover border-2 border-slate-100 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-navy-900 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {(selectedTicket.user?.fullName?.[0] || '?').toUpperCase()}
+                      </div>
+                    )}
                     <div>
-                      <h2 className="text-xl font-semibold text-navy-900">{selectedTicket.subject}</h2>
-                      <p className="text-sm text-slate-600 mt-1">
-                        {selectedTicket.user.fullName} • {selectedTicket.user.email}
+                      <h2 className="text-lg font-semibold text-navy-900 leading-tight">{selectedTicket.subject}</h2>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {selectedTicket.user?.fullName} &middot; {selectedTicket.user?.email}
                       </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Created {new Date(selectedTicket.createdAt).toLocaleString()}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                        <span>#{selectedTicket.ticketId}</span>
+                        <span>&middot;</span>
+                        <span>{formatDate(selectedTicket.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedTicket(null)}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    onClick={() => setSelectedTicketId(null)}
+                    className="hidden lg:flex p-2 hover:bg-slate-100 rounded-lg transition-colors"
                   >
-                    <X size={20} />
+                    <X size={18} />
                   </button>
                 </div>
 
-                {/* Status and Actions */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${getStatusColor(selectedTicket.status)}`}>
-                    {selectedTicket.status}
+                {/* Tags & Actions */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize ${getStatusColor(selectedTicket.status)}`}>
+                    {formatStatus(selectedTicket.status)}
                   </span>
-                  <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${getPriorityColor(selectedTicket.priority)}`}>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize ${getPriorityColor(selectedTicket.priority)}`}>
                     {selectedTicket.priority} priority
                   </span>
-                  <span className="text-xs px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700">
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-600 capitalize">
                     {selectedTicket.category}
                   </span>
+
+                  {selectedTicket.assignedTo && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-navy-50 text-navy-700">
+                      Assigned: {selectedTicket.assignedTo.fullName || selectedTicket.assignedTo.email}
+                    </span>
+                  )}
+
+                  {selectedTicket.rating && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gold-50 text-gold-700 flex items-center gap-1">
+                      <Star size={12} fill="currentColor" /> {selectedTicket.rating}/5
+                    </span>
+                  )}
+
                   <div className="flex gap-2 ml-auto">
+                    {!selectedTicket.assignedTo && (
+                      <button
+                        onClick={() => handleAssignToMe(selectedTicket.id || selectedTicket._id)}
+                        className="px-3 py-1.5 text-xs font-medium bg-navy-900 text-white rounded-lg hover:bg-navy-800 transition-colors"
+                      >
+                        Assign to Me
+                      </button>
+                    )}
                     <select
                       value={selectedTicket.status}
-                      onChange={(e) => handleUpdateStatus(selectedTicket._id, e.target.value)}
-                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-navy-500"
+                      onChange={(e) => handleUpdateStatus(selectedTicket.id || selectedTicket._id, e.target.value)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500 outline-none bg-white"
                     >
                       <option value="open">Open</option>
-                      <option value="in-progress">In Progress</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="waiting_reply">Waiting Reply</option>
                       <option value="resolved">Resolved</option>
                       <option value="closed">Closed</option>
                     </select>
@@ -385,74 +427,91 @@ export const SupportTickets: React.FC = () => {
               </div>
 
               {/* Messages */}
-              <div className="p-6 space-y-6 max-h-[400px] overflow-y-auto">
-                {/* Original Message */}
-                <div className="flex gap-4">
-                  <img
-                    src={selectedTicket.user.image || '/uploads/users/user.png'}
-                    alt={selectedTicket.user.fullName}
-                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                  />
-                  <div className="flex-1">
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-sm text-navy-900">{selectedTicket.user.fullName}</span>
-                        <span className="text-xs text-slate-400">
-                          {new Date(selectedTicket.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-700">{selectedTicket.message}</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Original message + all replies from messages array */}
+                {(selectedTicket.messages || []).map((msg: any, idx: number) => {
+                  const isAdmin = msg.senderRole === 'admin' || msg.senderRole === 'superAdmin';
+                  const senderName = msg.sender?.fullName || msg.sender?.email || (isAdmin ? 'Admin' : 'User');
+                  const senderImage = msg.sender?.image;
 
-                {/* Replies */}
-                {selectedTicket.replies.map((reply) => (
-                  <div key={reply._id} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                      {reply.sender.role === 'admin' ? 'A' : 'U'}
-                    </div>
-                    <div className="flex-1">
-                      <div className={`rounded-lg p-4 ${reply.sender.role === 'admin' ? 'bg-navy-50' : 'bg-slate-50'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-sm text-navy-900">{reply.sender.fullName}</span>
-                          <span className="text-xs text-slate-400">
-                            {new Date(reply.createdAt).toLocaleString()}
-                          </span>
-                          {reply.sender.role === 'admin' && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-navy-900 text-white">Admin</span>
-                          )}
+                  return (
+                    <div key={msg._id || msg.id || idx} className={`flex gap-3 ${isAdmin ? 'flex-row-reverse' : ''}`}>
+                      {senderImage ? (
+                        <img
+                          src={`${IMAGE_BASE}${senderImage}`}
+                          alt={senderName}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                          isAdmin ? 'bg-navy-900 text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {senderName[0]?.toUpperCase() || '?'}
                         </div>
-                        <p className="text-sm text-slate-700">{reply.message}</p>
+                      )}
+                      <div className={`max-w-[75%] ${isAdmin ? 'text-right' : ''}`}>
+                        <div className={`rounded-xl px-4 py-3 ${
+                          isAdmin ? 'bg-navy-900 text-white rounded-tr-sm' : 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                        }`}>
+                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                        </div>
+                        <div className={`flex items-center gap-2 mt-1.5 text-xs text-slate-400 ${isAdmin ? 'justify-end' : ''}`}>
+                          <span className="font-medium">{senderName}</span>
+                          {isAdmin && <span className="bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">ADMIN</span>}
+                          <span>&middot;</span>
+                          <span>{timeAgo(msg.createdAt)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Reply Form */}
-              <div className="p-6 border-t border-slate-100">
-                <div className="space-y-3">
-                  <textarea
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply..."
-                    rows={4}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-transparent resize-none text-sm"
-                  />
-                  <div className="flex justify-end">
+              {selectedTicket.status !== 'closed' && (
+                <div className="p-4 border-t border-slate-100 flex-shrink-0">
+                  <div className="flex gap-3">
+                    <textarea
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
+                      placeholder="Type your reply..."
+                      rows={2}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleReply();
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500 resize-none text-sm outline-none"
+                    />
                     <button
                       onClick={handleReply}
-                      disabled={loading || !replyMessage.trim()}
-                      className="flex items-center gap-2 bg-navy-900 text-white px-6 py-2 rounded-lg hover:bg-navy-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      disabled={replying || !replyMessage.trim()}
+                      className="self-end flex items-center gap-2 bg-navy-900 text-white px-5 py-2.5 rounded-xl hover:bg-navy-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex-shrink-0"
                     >
-                      <Send size={16} />
-                      {loading ? 'Sending...' : 'Send Reply'}
+                      {replying ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Send size={16} />
+                      )}
+                      Send
                     </button>
                   </div>
+                  <p className="text-xs text-slate-400 mt-1.5">Press Enter to send, Shift+Enter for new line</p>
                 </div>
-              </div>
-            </>
+              )}
+
+              {/* Closed ticket notice */}
+              {selectedTicket.status === 'closed' && (
+                <div className="p-4 border-t border-slate-100 bg-slate-50 text-center flex-shrink-0">
+                  <p className="text-sm text-slate-500">This ticket is closed. Change status to reopen it.</p>
+                  {selectedTicket.feedback && (
+                    <p className="text-xs text-slate-400 mt-1">User Feedback: "{selectedTicket.feedback}"</p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

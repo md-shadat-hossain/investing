@@ -219,7 +219,7 @@ const getTransactionById = async (id) => {
 const queryTransactions = async (filter, options) => {
   return Transaction.paginate(filter, {
     ...options,
-    populate: "user paymentGateway processedBy",
+    populate: "user,paymentGateway,processedBy",
     sort: { createdAt: -1 }
   });
 };
@@ -234,7 +234,8 @@ const getPendingTransactions = async (type = null) => {
   if (type) filter.type = type;
 
   return Transaction.find(filter)
-    .populate("user paymentGateway")
+    .populate("user")
+    .populate("paymentGateway")
     .sort({ createdAt: -1 });
 };
 

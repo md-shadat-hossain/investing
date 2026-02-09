@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Transaction, TransactionStatus } from '../types';
 import { MaskedData } from './ui/MaskedData';
-import { Search, Filter, Calendar, ChevronDown, X, Check } from 'lucide-react';
+import { Search, Filter, Calendar, ChevronDown, X, Check, Eye } from 'lucide-react';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
 }
 
 export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TransactionStatus>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  
+
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
 
@@ -22,35 +24,63 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
   };
 
   const getStatusStyle = (status: string) => {
-    switch(status) {
+    // Map API status to display status
+    const statusMap: any = {
+      'completed': 'approved',
+      'pending': 'pending',
+      'rejected': 'rejected',
+      'cancelled': 'rejected',
+      'processing': 'pending'
+    };
+    const mappedStatus = statusMap[status] || status;
+
+    switch(mappedStatus) {
       case 'approved': return 'bg-emerald-100 text-emerald-800';
       case 'rejected': return 'bg-rose-100 text-rose-800';
       default: return 'bg-amber-100 text-amber-800';
     }
   };
 
+  const getDisplayStatus = (status: string) => {
+    const statusMap: any = {
+      'completed': 'approved',
+      'pending': 'pending',
+      'rejected': 'rejected',
+      'cancelled': 'rejected',
+      'processing': 'pending'
+    };
+    return statusMap[status] || status;
+  };
+
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(tx => {
+    return transactions.filter((tx: any) => {
       // Search
       const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = 
-        tx.transactionId.toLowerCase().includes(searchLower) ||
-        tx.user.email.toLowerCase().includes(searchLower) ||
-        tx.user.name.toLowerCase().includes(searchLower) ||
-        tx.method.toLowerCase().includes(searchLower);
+      const matchesSearch =
+        tx.transactionId?.toLowerCase().includes(searchLower) ||
+        tx.user?.email?.toLowerCase().includes(searchLower) ||
+        tx.user?.fullName?.toLowerCase().includes(searchLower) ||
+        tx.paymentMethod?.toLowerCase().includes(searchLower);
 
-      // Status
-      const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
+      // Status - map API status to component status
+      const apiStatusMap: any = {
+        'completed': 'approved',
+        'pending': 'pending',
+        'rejected': 'rejected',
+        'cancelled': 'rejected'
+      };
+      const mappedStatus = apiStatusMap[tx.status] || tx.status;
+      const matchesStatus = statusFilter === 'all' || mappedStatus === statusFilter;
 
       // Date Range
       let matchesDate = true;
       if (dateRange.start) {
-        matchesDate = matchesDate && new Date(tx.date) >= new Date(dateRange.start);
+        matchesDate = matchesDate && new Date(tx.createdAt) >= new Date(dateRange.start);
       }
       if (dateRange.end) {
         const end = new Date(dateRange.end);
         end.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && new Date(tx.date) <= end;
+        matchesDate = matchesDate && new Date(tx.createdAt) <= end;
       }
 
       return matchesSearch && matchesStatus && matchesDate;
@@ -198,12 +228,13 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Search size={32} className="opacity-20" />
                       <p>No transactions match your filters.</p>
@@ -217,30 +248,38 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((tx) => (
+                filteredTransactions.map((tx: any) => (
                   <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-navy-900">{tx.method}</span>
+                        <span className="text-sm font-medium text-navy-900 capitalize">{tx.paymentMethod || tx.type}</span>
                         <MaskedData data={tx.transactionId} className="text-xs text-slate-500 font-mono mt-0.5" />
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                       <div className="text-sm text-navy-900 font-medium">{tx.user.name}</div>
-                       <div className="text-xs text-slate-500">{tx.user.email}</div>
+                       <div className="text-sm text-navy-900 font-medium">{tx.user?.fullName || tx.user?.email || 'Unknown'}</div>
+                       <div className="text-xs text-slate-500">{tx.user?.email || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
                        <span className={`font-mono font-medium ${tx.type === 'deposit' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {tx.type === 'deposit' ? '+' : '-'} ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {tx.type === 'deposit' ? '+' : '-'} ${tx.netAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                        </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getStatusStyle(tx.status)}`}>
-                        {tx.status}
+                        {getDisplayStatus(tx.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
-                      {formatDate(tx.date)}
+                      {formatDate(tx.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => navigate(`/history/${tx.id}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-navy-900 bg-slate-100 hover:bg-navy-900 hover:text-white rounded-lg transition-colors"
+                      >
+                        <Eye size={14} /> View
+                      </button>
                     </td>
                   </tr>
                 ))

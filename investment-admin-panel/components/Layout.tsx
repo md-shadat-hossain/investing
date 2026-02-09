@@ -5,6 +5,12 @@ import { RootState } from '../store/store';
 import { useLogoutMutation } from '../store/api/authApi';
 import { clearAuth } from '../store/slices/authSlice';
 import {
+  useGetMyNotificationsQuery,
+  useGetUnreadCountQuery,
+  useMarkAsReadMutation,
+  useMarkAllAsReadMutation,
+} from '../store/api/notificationApi';
+import {
   LayoutDashboard,
   ArrowDownLeft,
   ArrowUpRight,
@@ -22,9 +28,11 @@ import {
   UserPlus,
   MessageSquare,
   BarChart3,
-  Send
+  Send,
+  Loader2,
+  Eye,
+  Check,
 } from 'lucide-react';
-import { MOCK_NOTIFICATIONS } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -68,10 +76,63 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Mock badge counts - in real app, pass via props or context
-  const pendingDeposits = 2;
-  const pendingWithdrawals = 3;
-  const unreadNotifications = MOCK_NOTIFICATIONS.filter(n => !n.read).length;
+  // Notification API hooks
+  const { data: unreadData } = useGetUnreadCountQuery(undefined, {
+    pollingInterval: 30000, // Poll every 30 seconds for new notifications
+  });
+  const { data: notificationsData, isLoading: isLoadingNotifications } = useGetMyNotificationsQuery(
+    { limit: 10, skip: 0 },
+    { skip: !isNotificationsOpen }
+  );
+  const [markAsRead] = useMarkAsReadMutation();
+  const [markAllAsRead, { isLoading: isMarkingAllRead }] = useMarkAllAsReadMutation();
+
+  const unreadNotifications = unreadData?.data?.attributes?.count ?? 0;
+  const headerNotifications = notificationsData?.data?.attributes ?? [];
+
+  const getNotificationDotColor = (type: string) => {
+    const colors: Record<string, string> = {
+      transaction: 'bg-emerald-500',
+      security: 'bg-rose-500',
+      investment: 'bg-purple-500',
+      profit: 'bg-amber-500',
+      referral: 'bg-cyan-500',
+      bonus: 'bg-indigo-500',
+      support: 'bg-orange-500',
+      system: 'bg-blue-500',
+    };
+    return colors[type] || 'bg-blue-500';
+  };
+
+  const formatNotificationTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      await markAsRead(id).unwrap();
+    } catch (err) {
+      // silently fail
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllAsRead().unwrap();
+    } catch (err) {
+      // silently fail
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -121,8 +182,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="pt-6 pb-2">
               <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Transactions</p>
             </div>
-            <SidebarLink to="/deposits" icon={ArrowDownLeft} label="Deposits" badge={pendingDeposits} />
-            <SidebarLink to="/withdrawals" icon={ArrowUpRight} label="Withdrawals" badge={pendingWithdrawals} />
+            <SidebarLink to="/deposits" icon={ArrowDownLeft} label="Deposits" />
+            <SidebarLink to="/withdrawals" icon={ArrowUpRight} label="Withdrawals" />
             <SidebarLink to="/history" icon={History} label="Transaction History" />
 
             <div className="pt-6 pb-2">
@@ -188,27 +249,83 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               {isNotificationsOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsNotificationsOpen(false)}></div>
-                  <div className="absolute right-0 mt-4 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20 animate-in slide-in-from-top-2 duration-200">
+                  <div className="absolute right-0 mt-4 w-96 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20 animate-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <h3 className="font-semibold text-navy-900">Notifications</h3>
-                      <span className="text-xs text-gold-600 font-medium cursor-pointer hover:underline">Mark all read</span>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-navy-900">Notifications</h3>
+                        {unreadNotifications > 0 && (
+                          <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            {unreadNotifications}
+                          </span>
+                        )}
+                      </div>
+                      {unreadNotifications > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          disabled={isMarkingAllRead}
+                          className="text-xs text-gold-600 font-medium cursor-pointer hover:underline disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {isMarkingAllRead ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                          Mark all read
+                        </button>
+                      )}
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {MOCK_NOTIFICATIONS.map((note) => (
-                        <div key={note.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!note.read ? 'bg-blue-50/30' : ''}`}>
-                          <div className="flex gap-3">
-                             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${note.type === 'success' ? 'bg-emerald-500' : note.type === 'warning' ? 'bg-rose-500' : 'bg-blue-500'}`}></div>
-                             <div>
-                               <p className="text-sm font-medium text-navy-900">{note.title}</p>
-                               <p className="text-xs text-slate-500 mt-1 line-clamp-2">{note.message}</p>
-                               <p className="text-[10px] text-slate-400 mt-2">{note.time}</p>
-                             </div>
-                          </div>
+                    <div className="max-h-[380px] overflow-y-auto">
+                      {isLoadingNotifications ? (
+                        <div className="p-8 text-center">
+                          <Loader2 size={24} className="mx-auto animate-spin text-slate-400 mb-2" />
+                          <p className="text-xs text-slate-400">Loading...</p>
                         </div>
-                      ))}
+                      ) : Array.isArray(headerNotifications) && headerNotifications.length > 0 ? (
+                        headerNotifications.map((note: any) => (
+                          <div
+                            key={note.id || note._id}
+                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group ${
+                              note.status === 'unread' ? 'bg-blue-50/30' : ''
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getNotificationDotColor(note.type)}`}></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`text-sm font-medium ${note.status === 'unread' ? 'text-navy-900' : 'text-slate-600'}`}>
+                                    {note.title}
+                                  </p>
+                                  {note.status === 'unread' && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarkNotificationRead(note.id || note._id); }}
+                                      className="p-1 text-slate-300 hover:text-navy-900 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                      title="Mark as read"
+                                    >
+                                      <Eye size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1 line-clamp-2">{note.content}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className="text-[10px] text-slate-400">{formatNotificationTime(note.createdAt)}</span>
+                                  {note.priority === 'high' && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 font-medium">High</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center">
+                          <Bell size={24} className="mx-auto text-slate-300 mb-2" />
+                          <p className="text-xs text-slate-400">No notifications</p>
+                        </div>
+                      )}
                     </div>
                     <div className="p-2 text-center border-t border-slate-100">
-                       <button className="text-xs font-medium text-navy-900 hover:text-gold-600 p-2">View All Activity</button>
+                      <button
+                        onClick={() => { setIsNotificationsOpen(false); navigate('/notifications'); }}
+                        className="text-xs font-medium text-navy-900 hover:text-gold-600 p-2 w-full"
+                      >
+                        View All Notifications
+                      </button>
                     </div>
                   </div>
                 </>

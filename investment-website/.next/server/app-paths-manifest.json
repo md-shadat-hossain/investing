@@ -1,10 +1,4 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/wallet/stats/page": "app/dashboard/wallet/stats/page.js",
-  "/dashboard/deposit/page": "app/dashboard/deposit/page.js",
-  "/dashboard/transactions/page": "app/dashboard/transactions/page.js",
-  "/dashboard/plans/invest/page": "app/dashboard/plans/invest/page.js",
-  "/dashboard/settings/page": "app/dashboard/settings/page.js",
-  "/dashboard/notifications/page": "app/dashboard/notifications/page.js",
-  "/dashboard/referrals/page": "app/dashboard/referrals/page.js"
+  "/dashboard/referrals/page": "app/dashboard/referrals/page.js",
+  "/dashboard/referrals/network/page": "app/dashboard/referrals/network/page.js"
 }
