@@ -236,7 +236,7 @@ const validateReferralCode = async (referralCode) => {
 const queryReferrals = async (filter, options) => {
   return Referral.paginate(filter, {
     ...options,
-    populate: "referrer referred",
+    populate: "referrer fullName firstName lastName email referralCode image,referred fullName firstName lastName email image",
   });
 };
 

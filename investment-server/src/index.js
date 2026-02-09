@@ -11,11 +11,8 @@ let server;
 mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info("Connected to MongoDB");
 
-  // Start cron jobs for profit distribution
-  // ALWAYS run in TEST MODE (every 1 minute) for now
-  const testMode = true;
-  logger.info(`🧪 Starting cron jobs in TEST MODE - Profit distribution every 1 minute`);
-  cronService.startCronJobs(testMode);
+  // Start cron jobs for profit distribution (every 8 hours)
+  cronService.startCronJobs();
 
   server = app.listen(config.port, myIp, () => {
     // logger.info(`Listening to port ${config.port}`);

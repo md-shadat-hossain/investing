@@ -17,17 +17,16 @@ import { SupportTickets } from './components/SupportTickets';
 import { Analytics } from './components/Analytics';
 import { Notifications } from './components/Notifications';
 import { Toast, ToastType } from './components/ui/Toast';
-import { MOCK_TRANSACTIONS, CHART_DATA } from './constants';
 import { Transaction } from './types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle, FileText, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle, FileText, Users, Briefcase, TicketCheck, Loader2 } from 'lucide-react';
 import {
   useGetPendingTransactionsQuery,
   useGetAllTransactionsQuery,
-  useGetTransactionStatsQuery,
   useApproveTransactionMutation,
   useRejectTransactionMutation
 } from './store/api/transactionApi';
+import { useGetDashboardStatsQuery, useGetRecentActivitiesQuery } from './store/api/analyticsApi';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -36,17 +35,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
 };
 
 // --- Dashboard Component ---
-const Dashboard = ({ 
-  stats, 
-  recentTransactions, 
-  onApprove, 
+const Dashboard = ({
+  recentTransactions,
+  onApprove,
   onReject,
   onGenerateReport,
   onManageRoles,
   onEmergencyStop,
   isSystemPaused
-}: { 
-  stats: any, 
+}: {
   recentTransactions: Transaction[],
   onApprove: (id: string) => void,
   onReject: (id: string) => void,
@@ -55,6 +52,70 @@ const Dashboard = ({
   onEmergencyStop: () => void,
   isSystemPaused: boolean
 }) => {
+  // Fetch dashboard stats and recent activities
+  const { data: dashboardResponse, isLoading: dashboardLoading } = useGetDashboardStatsQuery();
+  const { data: activitiesResponse } = useGetRecentActivitiesQuery({ limit: 50 });
+
+  const dashboard = dashboardResponse?.data?.attributes || {};
+  const activities = activitiesResponse?.data?.attributes || {};
+  const activityTransactions: any[] = activities.recentTransactions || [];
+  const recentUsers: any[] = activities.recentUsers || [];
+  const recentTickets: any[] = activities.recentTickets || [];
+
+  // Build cashflow chart from recent completed transactions (group by day)
+  const chartData = useMemo(() => {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 6);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // Initialize last 7 days
+    const dayMap: Record<string, { name: string; income: number; outflow: number }> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const key = d.toISOString().split('T')[0];
+      dayMap[key] = { name: dayNames[d.getDay()], income: 0, outflow: 0 };
+    }
+
+    // Fill with real data
+    activityTransactions.forEach((tx: any) => {
+      if (tx.status !== 'completed') return;
+      const txDate = new Date(tx.createdAt);
+      const key = txDate.toISOString().split('T')[0];
+      if (dayMap[key]) {
+        if (tx.type === 'deposit') {
+          dayMap[key].income += tx.amount || 0;
+        } else if (tx.type === 'withdraw') {
+          dayMap[key].outflow += tx.amount || 0;
+        }
+      }
+    });
+
+    return Object.values(dayMap);
+  }, [activityTransactions]);
+
+  // Compute stats
+  const totalDeposits = dashboard.transactions?.totalDeposits || 0;
+  const totalWithdrawals = dashboard.transactions?.totalWithdrawals || 0;
+  const netBalance = totalDeposits - totalWithdrawals;
+  const pendingDeposits = dashboard.transactions?.pendingDeposits || 0;
+  const pendingWithdrawals = dashboard.transactions?.pendingWithdrawals || 0;
+  const totalUsers = dashboard.users?.total || 0;
+  const activeUsers = dashboard.users?.active || 0;
+  const activeInvestments = dashboard.investments?.active || 0;
+  const totalInvestmentsCount = dashboard.investments?.total || 0;
+  const openTickets = dashboard.support?.openTickets || 0;
+
+  if (dashboardLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="animate-spin text-navy-900" size={36} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* System Status Banner */}
@@ -73,76 +134,110 @@ const Dashboard = ({
         </div>
       )}
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Row 1 */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <StatsCard 
-          title="Total Balance" 
-          value="$168,331.09" 
-          change="+4.5%" 
-          icon={DollarSign} 
+        <StatsCard
+          title="Net Balance"
+          value={`$${netBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          change={`$${totalDeposits.toLocaleString()} deposits`}
+          icon={DollarSign}
           trend="up"
           color="navy"
         />
-        <StatsCard 
-          title="Pending Deposits" 
-          value={stats.pendingDeposits.toString()} 
-          change="Action Req." 
-          icon={TrendingUp} 
+        <StatsCard
+          title="Pending Deposits"
+          value={pendingDeposits.toString()}
+          change="Action Req."
+          icon={TrendingUp}
           trend="neutral"
           color="emerald"
-          badge={true}
+          badge={pendingDeposits > 0}
         />
-        <StatsCard 
-          title="Pending Withdrawals" 
-          value={stats.pendingWithdrawals.toString()} 
-          change="Action Req." 
-          icon={TrendingDown} 
-          trend="down"
+        <StatsCard
+          title="Pending Withdrawals"
+          value={pendingWithdrawals.toString()}
+          change="Action Req."
+          icon={TrendingDown}
+          trend="neutral"
           color="rose"
-          badge={true}
+          badge={pendingWithdrawals > 0}
         />
-        <StatsCard 
-          title="Daily Volume" 
-          value="$7,784.00" 
-          change="+12% vs yest" 
-          icon={Activity} 
+        <StatsCard
+          title="Total Users"
+          value={totalUsers.toLocaleString()}
+          change={`${activeUsers} verified`}
+          icon={Users}
           trend="up"
           color="gold"
         />
       </div>
 
-      {/* Chart & Summary */}
+      {/* Stats Grid - Row 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <StatsCard
+          title="Total Deposits"
+          value={`$${totalDeposits.toLocaleString()}`}
+          change="All time"
+          icon={TrendingUp}
+          trend="up"
+          color="emerald"
+        />
+        <StatsCard
+          title="Total Withdrawals"
+          value={`$${totalWithdrawals.toLocaleString()}`}
+          change="All time"
+          icon={TrendingDown}
+          trend="down"
+          color="rose"
+        />
+        <StatsCard
+          title="Active Investments"
+          value={activeInvestments.toLocaleString()}
+          change={`${totalInvestmentsCount} total`}
+          icon={Briefcase}
+          trend="up"
+          color="navy"
+        />
+        <StatsCard
+          title="Open Tickets"
+          value={openTickets.toLocaleString()}
+          change="Needs attention"
+          icon={TicketCheck}
+          trend="neutral"
+          color="gold"
+          badge={openTickets > 0}
+        />
+      </div>
+
+      {/* Chart & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-display font-semibold text-lg text-navy-900">Market Overview & Cashflow</h3>
-            <select className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1 outline-none focus:ring-1 focus:ring-gold-500">
-              <option>This Week</option>
-              <option>Last Week</option>
-            </select>
+            <h3 className="font-display font-semibold text-lg text-navy-900">Cashflow (Last 7 Days)</h3>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={CHART_DATA}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#0F172A" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorOutflow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15}/>
                     <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} tickFormatter={(val) => `$${val}`} />
-                <Tooltip 
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} tickFormatter={(val) => `$${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   itemStyle={{ fontSize: '12px', fontWeight: 600 }}
+                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, '']}
                 />
-                <Area type="monotone" dataKey="income" stroke="#0F172A" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
-                <Area type="monotone" dataKey="outflow" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorOutflow)" />
+                <Area type="monotone" dataKey="income" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name="Deposits" />
+                <Area type="monotone" dataKey="outflow" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorOutflow)" name="Withdrawals" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -152,42 +247,138 @@ const Dashboard = ({
         <div className="bg-navy-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gold-500 rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-rose-600 rounded-full blur-[50px] opacity-20 pointer-events-none"></div>
-          
+
           <h3 className="font-display font-semibold text-lg mb-6 relative z-10">Admin Quick Actions</h3>
           <div className="space-y-4 relative z-10">
-            <button 
+            <button
               onClick={onGenerateReport}
               className="w-full bg-white/10 hover:bg-white/20 transition-colors py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium"
             >
               <FileText size={18} /> Generate Weekly Report
             </button>
-            <button 
+            <button
               onClick={onManageRoles}
               className="w-full bg-white/10 hover:bg-white/20 transition-colors py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium"
             >
               <Users size={18} /> Manage User Roles
             </button>
-             <button 
+             <button
                onClick={onEmergencyStop}
-               className={`w-full transition-all py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold shadow-lg 
-                 ${isSystemPaused 
-                   ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50' 
+               className={`w-full transition-all py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold shadow-lg
+                 ${isSystemPaused
+                   ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
                    : 'bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 shadow-rose-900/50'
                  }`}
              >
               <AlertTriangle size={18} /> {isSystemPaused ? 'Resume System' : 'Emergency Stop System'}
             </button>
+
+            {/* Platform summary */}
+            <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Total Users</span>
+                <span className="font-semibold">{totalUsers.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Active Investments</span>
+                <span className="font-semibold">{activeInvestments.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Open Tickets</span>
+                <span className="font-semibold">{openTickets}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Net Revenue</span>
+                <span className={`font-semibold ${netBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  ${netBalance.toLocaleString()}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Transactions */}
-      <TransactionTable 
-        title="Recent Pending Requests" 
-        transactions={recentTransactions} 
-        onApprove={onApprove} 
-        onReject={onReject} 
+      {/* Recent Pending Transactions */}
+      <TransactionTable
+        title="Recent Pending Requests"
+        transactions={recentTransactions}
+        onApprove={onApprove}
+        onReject={onReject}
       />
+
+      {/* Recent Activity Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Users */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100">
+          <div className="p-5 border-b border-slate-100">
+            <h3 className="font-display font-semibold text-navy-900">Recent Registrations</h3>
+          </div>
+          <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            {recentUsers.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">No recent users</div>
+            ) : (
+              recentUsers.slice(0, 8).map((user: any, idx: number) => (
+                <div key={user.id || user._id || idx} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 text-xs font-bold">
+                      {(user.fullName || user.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-navy-900">{user.fullName || 'No Name'}</p>
+                      <p className="text-xs text-slate-500">{user.email}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Recent Tickets */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100">
+          <div className="p-5 border-b border-slate-100">
+            <h3 className="font-display font-semibold text-navy-900">Recent Support Tickets</h3>
+          </div>
+          <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            {recentTickets.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">No recent tickets</div>
+            ) : (
+              recentTickets.slice(0, 8).map((ticket: any, idx: number) => (
+                <div key={ticket.id || ticket._id || idx} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      ticket.status === 'open' ? 'bg-emerald-500' :
+                      ticket.status === 'in_progress' || ticket.status === 'waiting_reply' ? 'bg-amber-500' :
+                      'bg-slate-400'
+                    }`} />
+                    <div>
+                      <p className="text-sm font-medium text-navy-900 truncate max-w-[200px]">{ticket.subject || 'No Subject'}</p>
+                      <p className="text-xs text-slate-500">{ticket.user?.fullName || ticket.user?.email || 'Unknown'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      ticket.status === 'open' ? 'bg-emerald-100 text-emerald-700' :
+                      ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                      ticket.status === 'waiting_reply' ? 'bg-amber-100 text-amber-700' :
+                      ticket.status === 'resolved' ? 'bg-slate-100 text-slate-600' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {(ticket.status || '').replace('_', ' ')}
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -234,22 +425,12 @@ const AppContent = () => {
   // Fetch data from API
   const { data: pendingData } = useGetPendingTransactionsQuery({});
   const { data: allTransactionsData } = useGetAllTransactionsQuery({ page: 1, limit: 100 });
-  const { data: statsData } = useGetTransactionStatsQuery();
   const [approveTransaction] = useApproveTransactionMutation();
   const [rejectTransaction] = useRejectTransactionMutation();
 
   // Extract transactions from API response
   const pendingTransactions = pendingData?.data?.attributes || [];
   const allTransactions = allTransactionsData?.data?.attributes?.results || [];
-  const apiStats = statsData?.data?.attributes || {};
-
-  // Computed Stats
-  const stats = useMemo(() => {
-    return {
-      pendingDeposits: pendingTransactions.filter((t: any) => t.type === 'deposit').length,
-      pendingWithdrawals: pendingTransactions.filter((t: any) => t.type === 'withdraw').length,
-    };
-  }, [pendingTransactions]);
 
   // Handlers
   const handleAction = async (id: string, action: 'approved' | 'rejected') => {
@@ -349,7 +530,6 @@ const AppContent = () => {
         <Route path="/" element={
           <ProtectedRoute>
             <Dashboard
-              stats={stats}
               recentTransactions={pendingTransactions.slice(0, 5)}
               onApprove={(id) => handleAction(id, 'approved')}
               onReject={(id) => handleAction(id, 'rejected')}

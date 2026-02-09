@@ -1,71 +1,109 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, XCircle, Loader2, Mail } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Mail, ArrowLeft } from 'lucide-react'
 import { useVerifyEmailMutation, useResendVerificationEmailMutation } from '@/store/api/authApi'
 import { Toast, ToastType } from '@/components/Toast'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const token = searchParams.get('token')
+  const email = searchParams.get('email') || ''
 
   const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation()
   const [resendVerificationEmail, { isLoading: isResending }] = useResendVerificationEmailMutation()
 
-  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', ''])
+  const [status, setStatus] = useState<'input' | 'success' | 'error'>('input')
   const [errorMessage, setErrorMessage] = useState('')
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null)
 
-  useEffect(() => {
-    if (!token) {
-      setStatus('error')
-      setErrorMessage('Invalid or missing verification token.')
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return
+
+    const newOtp = [...otp]
+    newOtp[index] = value.slice(-1)
+    setOtp(newOtp)
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (pastedData.length === 0) return
+
+    const newOtp = [...otp]
+    for (let i = 0; i < pastedData.length; i++) {
+      newOtp[i] = pastedData[i]
+    }
+    setOtp(newOtp)
+
+    // Focus the next empty input or the last one
+    const focusIndex = Math.min(pastedData.length, 5)
+    inputRefs.current[focusIndex]?.focus()
+  }
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const code = otp.join('')
+
+    if (code.length !== 6) {
+      setToast({ message: 'Please enter the complete 6-digit code', type: 'error' })
       return
     }
 
-    handleVerifyEmail()
-  }, [token])
-
-  const handleVerifyEmail = async () => {
-    if (!token) return
+    if (!email) {
+      setToast({ message: 'Email address is missing. Please register again.', type: 'error' })
+      return
+    }
 
     try {
-      await verifyEmail({ token }).unwrap()
+      await verifyEmail({ email, code }).unwrap()
       setStatus('success')
-      setToast({
-        message: 'Email verified successfully! Redirecting to login...',
-        type: 'success'
-      })
+      setToast({ message: 'Email verified successfully! Redirecting to login...', type: 'success' })
       setTimeout(() => {
         router.push('/login')
-      }, 5000)
+      }, 3000)
     } catch (error: any) {
-      const errorMsg = error.data?.message || 'Verification failed. The link may have expired.'
+      const errorMsg = error?.data?.message || 'Verification failed. Please check your code and try again.'
       setStatus('error')
       setErrorMessage(errorMsg)
-      setToast({
-        message: errorMsg,
-        type: 'error'
-      })
+      setToast({ message: errorMsg, type: 'error' })
     }
   }
 
   const handleResendEmail = async () => {
+    if (!email) {
+      setToast({ message: 'Email address is missing.', type: 'error' })
+      return
+    }
+
     try {
-      await resendVerificationEmail({}).unwrap()
-      setToast({
-        message: 'Verification email sent! Check your inbox.',
-        type: 'success'
-      })
+      await resendVerificationEmail({ email }).unwrap()
+      setToast({ message: 'Verification code sent! Check your inbox.', type: 'success' })
+      // Reset to input state if was in error
+      if (status === 'error') {
+        setStatus('input')
+        setOtp(['', '', '', '', '', ''])
+        setErrorMessage('')
+      }
     } catch (error: any) {
-      const errorMsg = error.data?.message || 'Failed to resend verification email.'
-      setToast({
-        message: errorMsg,
-        type: 'error'
-      })
+      const errorMsg = error?.data?.message || 'Failed to resend verification code.'
+      setToast({ message: errorMsg, type: 'error' })
     }
   }
 
@@ -73,36 +111,22 @@ function VerifyEmailContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       {/* Toast Notification */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
       <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-lg border border-slate-800 rounded-2xl p-8">
 
-        {status === 'verifying' && (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-              <Loader2 className="text-gold-500 animate-spin" size={32} />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Verifying Your Email</h2>
-            <p className="text-slate-400">Please wait while we verify your email address...</p>
-          </div>
-        )}
-
-        {status === 'success' && (
+        {status === 'success' ? (
           <div className="text-center">
             <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="text-emerald-500" size={32} />
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Email Verified!</h2>
             <p className="text-slate-400 mb-6">
-              Your email has been successfully verified. You can now access all features of your account.
+              Your email has been successfully verified. You can now log in to your account.
             </p>
             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-6">
-              <p className="text-sm text-slate-300">Redirecting to login page in 5 seconds...</p>
+              <p className="text-sm text-slate-300">Redirecting to login page...</p>
             </div>
             <Link
               href="/login"
@@ -111,60 +135,89 @@ function VerifyEmailContent() {
               Go to Login
             </Link>
           </div>
-        )}
-
-        {status === 'error' && (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <XCircle className="text-rose-500" size={32} />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Verification Failed</h2>
-            <p className="text-rose-400 mb-6">{errorMessage}</p>
-
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-6 text-left">
-              <p className="text-sm text-slate-300 mb-2 font-medium">What can you do?</p>
-              <ul className="text-xs text-slate-400 space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-gold-500 mt-0.5">•</span>
-                  <span>Request a new verification email using the button below</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-gold-500 mt-0.5">•</span>
-                  <span>Check if the link has expired (links are valid for 24 hours)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-gold-500 mt-0.5">•</span>
-                  <span>Contact support if you continue to experience issues</span>
-                </li>
-              </ul>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="text-gold-500" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">Verify Your Email</h2>
+              <p className="text-slate-400 text-sm">
+                We&apos;ve sent a 6-digit verification code to
+              </p>
+              {email && (
+                <p className="text-gold-500 font-medium mt-1">{email}</p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-3">
+            {/* OTP Form */}
+            <form onSubmit={handleVerify}>
+              <div className="flex justify-center gap-3 mb-6" onPaste={handlePaste}>
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { inputRefs.current[index] = el }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className={`w-12 h-14 text-center text-xl font-bold rounded-lg border bg-slate-950/50 text-white focus:outline-none focus:ring-2 transition-all ${
+                      status === 'error'
+                        ? 'border-rose-500/50 focus:ring-rose-500/50 focus:border-rose-500'
+                        : 'border-slate-700 focus:ring-gold-500/50 focus:border-gold-500'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Error message */}
+              {status === 'error' && errorMessage && (
+                <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-lg p-3 mb-6">
+                  <XCircle size={16} className="text-rose-500 flex-shrink-0" />
+                  <p className="text-rose-400 text-sm">{errorMessage}</p>
+                </div>
+              )}
+
               <button
-                onClick={handleResendEmail}
-                disabled={isResending}
-                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 text-white font-bold py-3 rounded-lg hover:from-gold-600 hover:to-amber-700 transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                type="submit"
+                disabled={isVerifying || otp.join('').length !== 6}
+                className="w-full bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-slate-950 font-bold py-3 px-4 rounded-lg shadow-lg shadow-gold-500/20 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isResending ? (
+                {isVerifying ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Sending...
+                    <Loader2 size={18} className="mr-2 animate-spin" />
+                    Verifying...
                   </>
                 ) : (
-                  <>
-                    <Mail size={18} />
-                    Resend Verification Email
-                  </>
+                  'Verify Email'
                 )}
               </button>
+            </form>
+
+            {/* Resend & Back */}
+            <div className="mt-6 text-center space-y-4">
+              <p className="text-slate-500 text-sm">
+                Didn&apos;t receive the code?{' '}
+                <button
+                  onClick={handleResendEmail}
+                  disabled={isResending}
+                  className="text-gold-500 font-semibold hover:text-gold-400 hover:underline disabled:opacity-50"
+                >
+                  {isResending ? 'Sending...' : 'Resend Code'}
+                </button>
+              </p>
               <Link
-                href="/login"
-                className="w-full text-center border border-slate-700 text-slate-300 font-medium py-3 rounded-lg hover:bg-slate-800/50 transition-all"
+                href="/register"
+                className="inline-flex items-center gap-1.5 text-slate-500 text-sm hover:text-slate-300 transition-colors"
               >
-                Back to Login
+                <ArrowLeft size={14} />
+                Back to Register
               </Link>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

@@ -2649,6 +2649,11 @@ video {
   border-color: rgb(234 179 8 / var(--tw-border-opacity, 1));
 }
 
+.focus\:border-rose-500:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(244 63 94 / var(--tw-border-opacity, 1));
+}
+
 .focus\:outline-none:focus {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -2677,6 +2682,10 @@ video {
 
 .focus\:ring-gold-500\/50:focus {
   --tw-ring-color: rgb(234 179 8 / 0.5);
+}
+
+.focus\:ring-rose-500\/50:focus {
+  --tw-ring-color: rgb(244 63 94 / 0.5);
 }
 
 .active\:translate-y-0:active {

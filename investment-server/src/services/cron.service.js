@@ -126,32 +126,24 @@ const startCronJobs = (testMode = false) => {
     console.log("✅ Cron jobs started - Next profit distribution in 3 seconds, then every 1 minute");
     console.log("=".repeat(60) + "\n");
   } else {
-    // PRODUCTION MODE: Process daily profits once per day at midnight (00:00)
-    const scheduleDailyProfitDistribution = () => {
-      const now = new Date();
-      const midnight = new Date();
-      midnight.setHours(24, 0, 0, 0); // Next midnight
+    // PRODUCTION MODE: Process profits every 8 hours
+    const EIGHT_HOURS = 8 * 60 * 60 * 1000;
 
-      const msUntilMidnight = midnight - now;
+    // Run immediately on startup (after 5 seconds)
+    setTimeout(async () => {
+      console.log("⏰ Running profit distribution (Initial run)...");
+      const result = await processDailyProfits();
+      console.log(`✅ Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+    }, 5000);
 
-      // Run first distribution at next midnight
-      setTimeout(async () => {
-        console.log("Running: Daily profit distribution (scheduled)");
-        await processDailyProfits();
+    // Then run every 8 hours
+    setInterval(async () => {
+      console.log("⏰ Running profit distribution (Every 8 hours)...");
+      const result = await processDailyProfits();
+      console.log(`✅ Distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+    }, EIGHT_HOURS);
 
-        // Then run every 24 hours
-        setInterval(async () => {
-          console.log("Running: Daily profit distribution (scheduled)");
-          await processDailyProfits();
-        }, 24 * 60 * 60 * 1000); // Every 24 hours
-      }, msUntilMidnight);
-
-      console.log(`Daily profit distribution scheduled to run at midnight (in ${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
-    };
-
-    scheduleDailyProfitDistribution();
-
-    console.log("✅ Cron jobs started in PRODUCTION MODE (daily at midnight)");
+    console.log(`✅ Cron jobs started - Profit distribution every 8 hours`);
   }
 };
 

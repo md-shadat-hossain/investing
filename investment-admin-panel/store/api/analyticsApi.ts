@@ -1,27 +1,5 @@
 import { baseApi } from './baseApi';
 
-export interface DashboardStats {
-  totalUsers: number;
-  activeInvestments: number;
-  totalInvested: number;
-  totalProfitDistributed: number;
-  pendingDeposits: number;
-  pendingWithdrawals: number;
-  totalDeposits: number;
-  totalWithdrawals: number;
-  recentTransactions?: any[];
-  recentUsers?: any[];
-  monthlyRevenue?: {
-    month: string;
-    amount: number;
-  }[];
-  investmentsByPlan?: {
-    planName: string;
-    count: number;
-    amount: number;
-  }[];
-}
-
 export const analyticsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Get dashboard statistics (admin)
@@ -38,10 +16,30 @@ export const analyticsApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Analytics'],
     }),
+
+    // Get all transactions for analytics (admin)
+    getAllTransactionsForAnalytics: builder.query<any, { limit?: number; sortBy?: string }>({
+      query: (params) => ({
+        url: '/transactions/admin/all',
+        params: { limit: params?.limit || 100, sortBy: params?.sortBy || 'createdAt:desc' },
+      }),
+      providesTags: ['Transactions'],
+    }),
+
+    // Get all investments for analytics (admin)
+    getAllInvestmentsForAnalytics: builder.query<any, { limit?: number; sortBy?: string }>({
+      query: (params) => ({
+        url: '/investments/admin/all',
+        params: { limit: params?.limit || 100, sortBy: params?.sortBy || 'createdAt:desc' },
+      }),
+      providesTags: ['Investments'],
+    }),
   }),
 });
 
 export const {
   useGetDashboardStatsQuery,
   useGetRecentActivitiesQuery,
+  useGetAllTransactionsForAnalyticsQuery,
+  useGetAllInvestmentsForAnalyticsQuery,
 } = analyticsApi;

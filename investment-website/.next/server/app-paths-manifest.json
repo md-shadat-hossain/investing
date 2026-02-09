@@ -1,4 +1,8 @@
 {
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/deposit/page": "app/dashboard/deposit/page.js",
+  "/dashboard/notifications/page": "app/dashboard/notifications/page.js",
   "/dashboard/referrals/page": "app/dashboard/referrals/page.js",
+  "/dashboard/support/page": "app/dashboard/support/page.js",
   "/dashboard/referrals/network/page": "app/dashboard/referrals/network/page.js"
 }

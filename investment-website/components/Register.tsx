@@ -1,20 +1,62 @@
 'use client'
 
-import React from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { TrendingUp, ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { TrendingUp, ArrowRight, Lock, Mail, User, Users, Loader2 } from 'lucide-react';
+import { useRegisterMutation } from '@/store/api/authApi';
+import { Toast, ToastType } from '@/components/Toast';
 
-const Register = () => {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref') || '';
 
-  const handleRegister = (e: React.FormEvent) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState(refCode);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const [register, { isLoading }] = useRegisterMutation();
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/dashboard');
+
+    if (password !== confirmPassword) {
+      setToast({ message: 'Passwords do not match', type: 'error' });
+      return;
+    }
+
+    try {
+      await register({
+        firstName,
+        lastName,
+        email,
+        password,
+        ...(referralCode ? { referralCode } : {}),
+      }).unwrap();
+
+      setToast({ message: 'Account created! Please verify your email.', type: 'success' });
+
+      setTimeout(() => {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      }, 1000);
+    } catch (error: any) {
+      const errorMsg = error?.data?.message || 'Registration failed. Please try again.';
+      setToast({ message: errorMsg, type: 'error' });
+    }
   };
 
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-slate-950 py-12">
+      {/* Toast */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0">
         <img
@@ -43,18 +85,37 @@ const Register = () => {
         {/* Register Card */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl">
           <form onSubmit={handleRegister} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <User size={18} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">First Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                    <User size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
+                    placeholder="John"
+                  />
                 </div>
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
-                  placeholder="John Doe"
-                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                    <User size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
+                    placeholder="Doe"
+                  />
+                </div>
               </div>
             </div>
 
@@ -67,6 +128,8 @@ const Register = () => {
                 <input
                   type="email"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
                   placeholder="name@example.com"
                 />
@@ -82,6 +145,8 @@ const Register = () => {
                 <input
                   type="password"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
                   placeholder="Create a strong password"
                 />
@@ -97,8 +162,28 @@ const Register = () => {
                 <input
                   type="password"
                   required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
                   placeholder="Confirm your password"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Referral Code <span className="text-slate-500">(optional)</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <Users size={18} />
+                </div>
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors placeholder-slate-600"
+                  placeholder="Enter referral code"
                 />
               </div>
             </div>
@@ -114,10 +199,20 @@ const Register = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-slate-950 font-bold py-3 px-4 rounded-lg shadow-lg shadow-gold-500/20 transform hover:-translate-y-0.5 transition-all flex items-center justify-center group mt-4"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-slate-950 font-bold py-3 px-4 rounded-lg shadow-lg shadow-gold-500/20 transform hover:-translate-y-0.5 transition-all flex items-center justify-center group mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Create Account
-              <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+              {isLoading ? (
+                <>
+                  <Loader2 size={18} className="mr-2 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 
@@ -132,6 +227,18 @@ const Register = () => {
         </div>
       </div>
     </div>
+  );
+}
+
+const Register = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 className="text-gold-500 animate-spin" size={32} />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 };
 

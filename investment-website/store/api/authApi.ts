@@ -14,11 +14,12 @@ interface LoginRequest {
 }
 
 interface VerifyEmailRequest {
-  token: string;
+  email: string;
+  code: string;
 }
 
 interface ResendVerificationEmailRequest {
-  email?: string;
+  email: string;
 }
 
 interface ForgotPasswordRequest {
@@ -84,25 +85,13 @@ export const authApi = baseApi.injectEndpoints({
       invalidatesTags: ['Auth'],
     }),
 
-    // Verify Email
-    verifyEmail: builder.mutation<AuthResponse, VerifyEmailRequest>({
+    // Verify Email (OTP code)
+    verifyEmail: builder.mutation<any, VerifyEmailRequest>({
       query: (body) => ({
         url: '/auth/verify-email',
         method: 'POST',
         body,
       }),
-      transformResponse: (response: AuthResponse) => {
-        // Store tokens and user info after successful verification
-        if (response.code === 200 && response.data) {
-          const { tokens, user } = response.data.attributes;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('accessToken', tokens.access.token);
-            localStorage.setItem('refreshToken', tokens.refresh.token);
-            localStorage.setItem('user', JSON.stringify(user));
-          }
-        }
-        return response;
-      },
       invalidatesTags: ['Auth'],
     }),
 
