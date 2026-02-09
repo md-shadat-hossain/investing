@@ -65,19 +65,20 @@ const processCompletedInvestments = async () => {
 /**
  * Process daily profits for active investments
  * This distributes daily ROI to users (uses new profit distribution service with admin controls)
+ * @param {boolean} testMode - If true, runs in test mode (1 minute intervals)
  */
-const processDailyProfits = async () => {
+const processDailyProfits = async (testMode = false) => {
   try {
-    console.log("Starting daily profit distribution...");
+    console.log("Starting profit distribution...");
 
     // Use the new profit distribution service which handles:
     // - Admin adjustments
     // - Paused investments
     // - Profit rate customization
     // - Proper tracking and logging
-    const results = await profitDistributionService.distributeAllProfits();
+    const results = await profitDistributionService.distributeAllProfits(testMode);
 
-    console.log(`Daily profit distribution complete:`);
+    console.log(`Profit distribution complete:`);
     console.log(`- Total investments processed: ${results.total}`);
     console.log(`- Successful: ${results.successful}`);
     console.log(`- Failed: ${results.failed}`);
@@ -92,40 +93,66 @@ const processDailyProfits = async () => {
 
 /**
  * Start cron jobs
+ * @param {boolean} testMode - If true, runs every 1 minute for testing. If false, runs daily at midnight.
  */
-const startCronJobs = () => {
+const startCronJobs = (testMode = false) => {
   // Process completed investments every hour
   setInterval(async () => {
     console.log("Running: Process completed investments");
     await processCompletedInvestments();
   }, 60 * 60 * 1000); // Every hour
 
-  // Process daily profits once per day at midnight (00:00)
-  const scheduleDailyProfitDistribution = () => {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0); // Next midnight
+  if (testMode) {
+    // TEST MODE: Run profit distribution every 1 minute
+    console.log("=".repeat(60));
+    console.log("🧪 TEST MODE ENABLED: Profit distribution every 1 MINUTE");
+    console.log("⚠️  This is for TESTING purposes only!");
+    console.log("=".repeat(60));
 
-    const msUntilMidnight = midnight - now;
-
-    // Run first distribution at next midnight
+    // Run IMMEDIATELY on startup (after 3 seconds)
     setTimeout(async () => {
-      console.log("Running: Daily profit distribution (scheduled)");
-      await processDailyProfits();
+      console.log("\n⏰ [TEST MODE] Running profit distribution (Initial run)...");
+      const result = await processDailyProfits(true); // Pass testMode = true
+      console.log(`✅ Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped\n`);
+    }, 3000); // Wait 3 seconds after startup
 
-      // Then run every 24 hours
-      setInterval(async () => {
+    // Then run every 1 minute
+    setInterval(async () => {
+      console.log("\n⏰ [TEST MODE] Running profit distribution (Every 1 minute)...");
+      const result = await processDailyProfits(true); // Pass testMode = true
+      console.log(`✅ Distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped\n`);
+    }, 60 * 1000); // Every 1 minute
+
+    console.log("✅ Cron jobs started - Next profit distribution in 3 seconds, then every 1 minute");
+    console.log("=".repeat(60) + "\n");
+  } else {
+    // PRODUCTION MODE: Process daily profits once per day at midnight (00:00)
+    const scheduleDailyProfitDistribution = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0); // Next midnight
+
+      const msUntilMidnight = midnight - now;
+
+      // Run first distribution at next midnight
+      setTimeout(async () => {
         console.log("Running: Daily profit distribution (scheduled)");
         await processDailyProfits();
-      }, 24 * 60 * 60 * 1000); // Every 24 hours
-    }, msUntilMidnight);
 
-    console.log(`Daily profit distribution scheduled to run at midnight (in ${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
-  };
+        // Then run every 24 hours
+        setInterval(async () => {
+          console.log("Running: Daily profit distribution (scheduled)");
+          await processDailyProfits();
+        }, 24 * 60 * 60 * 1000); // Every 24 hours
+      }, msUntilMidnight);
 
-  scheduleDailyProfitDistribution();
+      console.log(`Daily profit distribution scheduled to run at midnight (in ${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
+    };
 
-  console.log("Cron jobs started");
+    scheduleDailyProfitDistribution();
+
+    console.log("✅ Cron jobs started in PRODUCTION MODE (daily at midnight)");
+  }
 };
 
 module.exports = {

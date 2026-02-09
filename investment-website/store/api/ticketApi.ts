@@ -2,8 +2,8 @@ import { baseApi } from './baseApi';
 
 interface CreateTicketRequest {
   subject: string;
-  category: string;
-  priority: 'low' | 'medium' | 'high';
+  category: 'deposit' | 'withdrawal' | 'investment' | 'account' | 'technical' | 'other';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   message: string;
 }
 
@@ -35,8 +35,8 @@ interface Ticket {
   id: string;
   userId: string;
   subject: string;
-  category: string;
-  priority: 'low' | 'medium' | 'high';
+  category: 'deposit' | 'withdrawal' | 'investment' | 'account' | 'technical' | 'other';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   rating?: number;
   feedback?: string;

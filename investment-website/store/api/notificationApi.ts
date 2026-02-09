@@ -1,14 +1,16 @@
 import { baseApi } from './baseApi';
 
-interface Notification {
+export interface Notification {
   id: string;
   userId: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: string;
   title: string;
-  message: string;
-  isRead: boolean;
-  link?: string;
-  metadata?: Record<string, any>;
+  content: string;
+  status: 'unread' | 'read';
+  priority: 'low' | 'medium' | 'high';
+  icon?: string;
+  image?: string;
+  transactionId?: string;
   createdAt: string;
   updatedAt: string;
 }

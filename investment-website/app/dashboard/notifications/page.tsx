@@ -63,18 +63,19 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'succes
 }
 
 // Notification type mapping
-type NotificationType = 'info' | 'success' | 'warning' | 'error'
 type CategoryType = 'all' | 'unread' | 'read' | 'transaction' | 'system' | 'promotion' | 'security'
 
 interface Notification {
   id: string
   userId: string
-  type: NotificationType
+  type: string
   title: string
-  message: string
-  isRead: boolean
-  link?: string
-  metadata?: Record<string, any>
+  content: string
+  status: 'unread' | 'read'
+  priority: 'low' | 'medium' | 'high'
+  icon?: string
+  image?: string
+  transactionId?: string
   createdAt: string
   updatedAt: string
 }
@@ -185,30 +186,24 @@ export default function NotificationCenter() {
 
   // Map notification types to categories
   const mapTypeToCategory = (notification: Notification): string => {
-    // Map the API notification types to our categories
-    switch (notification.type) {
-      case 'success':
-        return 'transaction'
-      case 'error':
-        return 'security'
-      case 'warning':
-        return 'system'
-      case 'info':
-        return 'promotion'
-      default:
-        return 'system'
-    }
+    const type = notification.type.toLowerCase();
+    if (type.includes('transaction') || type.includes('deposit') || type.includes('withdraw')) return 'transaction';
+    if (type.includes('security') || type.includes('password') || type.includes('login')) return 'security';
+    if (type.includes('promotion') || type.includes('bonus') || type.includes('referral')) return 'promotion';
+    if (type.includes('profit') || type.includes('investment')) return 'transaction';
+    return 'system';
   }
 
   // Get icon based on notification type
-  const getIcon = (type: NotificationType) => {
+  const getIcon = (notification: Notification) => {
+    const category = mapTypeToCategory(notification);
     const icons = {
-      success: <CheckCircle className="text-emerald-500" size={20} />,
-      error: <XCircle className="text-rose-500" size={20} />,
-      warning: <AlertCircle className="text-amber-500" size={20} />,
-      info: <Info className="text-blue-500" size={20} />,
+      transaction: <DollarSign className="text-emerald-500" size={20} />,
+      security: <Shield className="text-rose-500" size={20} />,
+      promotion: <Gift className="text-gold-500" size={20} />,
+      system: <AlertTriangle className="text-blue-500" size={20} />,
     }
-    return icons[type] || <Bell className="text-slate-500" size={20} />
+    return icons[category as keyof typeof icons] || <Bell className="text-slate-500" size={20} />
   }
 
   // Get category icon
@@ -242,8 +237,8 @@ export default function NotificationCenter() {
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n) => {
       if (filter === 'all') return true
-      if (filter === 'unread') return !n.isRead
-      if (filter === 'read') return n.isRead
+      if (filter === 'unread') return n.status === 'unread'
+      if (filter === 'read') return n.status === 'read'
       return mapTypeToCategory(n) === filter
     })
   }, [notifications, filter])
@@ -252,8 +247,8 @@ export default function NotificationCenter() {
   const stats = useMemo(() => {
     return {
       all: notifications.length,
-      unread: notifications.filter((n) => !n.isRead).length,
-      read: notifications.filter((n) => n.isRead).length,
+      unread: notifications.filter((n) => n.status === 'unread').length,
+      read: notifications.filter((n) => n.status === 'read').length,
       transaction: notifications.filter((n) => mapTypeToCategory(n) === 'transaction').length,
       system: notifications.filter((n) => mapTypeToCategory(n) === 'system').length,
       promotion: notifications.filter((n) => mapTypeToCategory(n) === 'promotion').length,
@@ -303,11 +298,12 @@ export default function NotificationCenter() {
   }
 
   const handleNotificationClick = async (notification: Notification) => {
-    if (!notification.isRead) {
+    if (notification.status === 'unread') {
       await handleMarkAsRead(notification.id)
     }
-    if (notification.link) {
-      window.location.href = notification.link
+    // Navigate to transaction if transactionId exists
+    if (notification.transactionId) {
+      window.location.href = `/dashboard/transactions?search=${notification.transactionId}`
     }
   }
 
@@ -529,19 +525,19 @@ export default function NotificationCenter() {
                 <div
                   key={notification.id}
                   className={`p-5 hover:bg-slate-800/30 transition-all group cursor-pointer ${
-                    !notification.isRead ? 'bg-slate-800/20 border-l-2 border-l-gold-500' : ''
+                    notification.status === 'unread' ? 'bg-slate-800/20 border-l-2 border-l-gold-500' : ''
                   } ${isDeleting ? 'opacity-50' : ''}`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 mt-0.5">
-                      {getCategoryIcon(category)}
+                      {getIcon(notification)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4 mb-1.5">
                         <div className="flex items-center gap-2 flex-1">
                           <h3 className="text-white font-semibold text-sm">{notification.title}</h3>
-                          {!notification.isRead && (
+                          {notification.status === 'unread' && (
                             <div className="w-2 h-2 bg-gold-500 rounded-full flex-shrink-0 animate-pulse" />
                           )}
                         </div>
@@ -549,7 +545,7 @@ export default function NotificationCenter() {
                           {formatDate(notification.createdAt)}
                         </span>
                       </div>
-                      <p className="text-slate-400 text-sm mb-3 leading-relaxed">{notification.message}</p>
+                      <p className="text-slate-400 text-sm mb-3 leading-relaxed">{notification.content}</p>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${
@@ -564,7 +560,7 @@ export default function NotificationCenter() {
                         >
                           {category}
                         </span>
-                        {!notification.isRead && (
+                        {notification.status === 'unread' && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()

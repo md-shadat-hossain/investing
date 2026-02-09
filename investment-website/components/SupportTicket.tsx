@@ -1,45 +1,67 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Send, AlertCircle, CheckCircle2, Wallet, HelpCircle } from 'lucide-react';
+import { Send, AlertCircle, CheckCircle2, Wallet, HelpCircle, Loader2 } from 'lucide-react';
+import { useCreateTicketMutation } from '@/store/api/ticketApi';
+import { useGetWalletQuery } from '@/store/api/walletApi';
+import Link from 'next/link';
 
 const SupportTicket = () => {
-  // Simulating local balance for this component to demonstrate the deduction
-  const [balance, setBalance] = useState(12450.00);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [priority, setPriority] = useState('Normal');
+  const [category, setCategory] = useState('technical');
+  const [priority, setPriority] = useState('normal');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
+
+  // Fetch wallet data
+  const { data: walletResponse, isLoading: walletLoading } = useGetWalletQuery();
+  const [createTicket, { isLoading: isSubmitting }] = useCreateTicketMutation();
+
+  const wallet = walletResponse?.data?.attributes;
+  const balance = wallet?.balance || 0;
 
   const TICKET_COST = 1.00;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
-    setIsSubmitting(true);
+    setCreatedTicketId(null);
 
-    // Simulate API delay
-    setTimeout(() => {
-      if (balance < TICKET_COST) {
-        setErrorMsg('Insufficient balance to open a support ticket. Please deposit funds.');
-        setIsSubmitting(false);
-        return;
-      }
+    try {
+      const result = await createTicket({
+        subject,
+        category,
+        priority: priority as 'low' | 'normal' | 'high' | 'urgent',
+        message,
+      }).unwrap();
 
-      // Deduct balance
-      setBalance(prev => prev - TICKET_COST);
-      setSuccessMsg(`Ticket #${Math.floor(Math.random() * 90000) + 10000} created successfully! $${TICKET_COST.toFixed(2)} has been deducted from your balance.`);
-      
+      const ticket = result.data.attributes;
+      setCreatedTicketId(ticket.id);
+      setSuccessMsg(`Ticket #${ticket.ticketId || ticket.id} created successfully! $${TICKET_COST.toFixed(2)} has been deducted from your balance.`);
+
       // Reset form
       setSubject('');
       setMessage('');
-      setPriority('Normal');
-      setIsSubmitting(false);
-    }, 1000);
+      setPriority('normal');
+      setCategory('technical');
+    } catch (err: any) {
+      setErrorMsg(err?.data?.message || 'Failed to create ticket. Please try again.');
+    }
   };
+
+  if (walletLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-gold-500 mx-auto mb-4" size={48} />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +70,7 @@ const SupportTicket = () => {
           <h2 className="text-2xl font-bold text-white">Support Center</h2>
           <p className="text-slate-400 text-sm">Get expert assistance from our dedicated team.</p>
         </div>
-        
+
         {/* Balance Display for Context */}
         <div className="flex items-center space-x-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg">
           <div className="bg-gold-500/10 p-2 rounded-full text-gold-500">
@@ -72,9 +94,19 @@ const SupportTicket = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6 relative z-0">
               {successMsg && (
-                <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-4 rounded-lg flex items-start">
-                  <CheckCircle2 size={20} className="mr-3 mt-0.5 shrink-0" />
-                  <p className="text-sm">{successMsg}</p>
+                <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-4 rounded-lg">
+                  <div className="flex items-start mb-3">
+                    <CheckCircle2 size={20} className="mr-3 mt-0.5 shrink-0" />
+                    <p className="text-sm">{successMsg}</p>
+                  </div>
+                  {createdTicketId && (
+                    <Link
+                      href={`/dashboard/support/tickets/${createdTicketId}`}
+                      className="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      View Ticket
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -86,20 +118,41 @@ const SupportTicket = () => {
               )}
 
               <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors"
+                >
+                  <option value="deposit">Deposit Issues</option>
+                  <option value="withdrawal">Withdrawal Issues</option>
+                  <option value="investment">Investment Related</option>
+                  <option value="account">Account Issues</option>
+                  <option value="technical">Technical Support</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Priority Level</label>
-                <div className="grid grid-cols-3 gap-4">
-                  {['Low', 'Normal', 'High'].map((level) => (
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Low', value: 'low' },
+                    { label: 'Normal', value: 'normal' },
+                    { label: 'High', value: 'high' },
+                    { label: 'Urgent', value: 'urgent' },
+                  ].map((level) => (
                     <button
-                      key={level}
+                      key={level.value}
                       type="button"
-                      onClick={() => setPriority(level)}
+                      onClick={() => setPriority(level.value)}
                       className={`py-2 rounded-lg text-sm font-medium border transition-all ${
-                        priority === level
+                        priority === level.value
                           ? 'bg-gold-500 text-slate-950 border-gold-500'
                           : 'bg-slate-950 text-slate-400 border-slate-700 hover:border-slate-600'
                       }`}
                     >
-                      {level}
+                      {level.label}
                     </button>
                   ))}
                 </div>

@@ -11,7 +11,7 @@ interface Ticket {
   userId: string
   subject: string
   category: string
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   rating?: number
   feedback?: string
@@ -26,7 +26,11 @@ export default function MyTickets() {
 
   const { data, isLoading, error } = useGetMyTicketsQuery()
 
-  const tickets = data?.data?.attributes || []
+  // Handle both array and paginated response
+  const ticketsData = data?.data?.attributes
+  const tickets = Array.isArray(ticketsData)
+    ? ticketsData
+    : (ticketsData?.results || [])
 
   const getStatusIcon = (status: Ticket['status']) => {
     switch (status) {
@@ -58,8 +62,9 @@ export default function MyTickets() {
   const getPriorityBadge = (priority: Ticket['priority']) => {
     const styles = {
       low: 'bg-slate-500/10 text-slate-400',
-      medium: 'bg-blue-500/10 text-blue-400',
-      high: 'bg-rose-500/10 text-rose-400',
+      normal: 'bg-blue-500/10 text-blue-400',
+      high: 'bg-amber-500/10 text-amber-400',
+      urgent: 'bg-rose-500/10 text-rose-400',
     }
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${styles[priority]}`}>

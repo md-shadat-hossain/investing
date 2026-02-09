@@ -9,12 +9,21 @@ const ApiError = require("../utils/ApiError");
 const createTicket = catchAsync(async (req, res) => {
   const ticket = await supportTicketService.createTicket(req.user._id, req.body);
 
+  // Map ticket priority to notification priority
+  // Ticket: low, normal, high, urgent -> Notification: low, medium, high
+  const notificationPriorityMap = {
+    low: 'low',
+    normal: 'medium',
+    high: 'high',
+    urgent: 'high'
+  };
+
   // Notify admins
   await notificationService.sendToAdmins(
     "New Support Ticket",
     `${req.user.fullName || req.user.email} has opened a new support ticket: ${req.body.subject}`,
     "support",
-    { priority: req.body.priority }
+    { priority: notificationPriorityMap[req.body.priority] || 'medium' }
   );
 
   res.status(httpStatus.CREATED).json(

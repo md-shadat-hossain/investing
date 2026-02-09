@@ -1,18 +1,21 @@
 import { baseApi } from './baseApi';
 
-interface InvestmentPlan {
+export interface InvestmentPlan {
   id: string;
   name: string;
-  description: string;
-  minInvestment: number;
-  maxInvestment: number;
+  description?: string;
+  minDeposit: number;
+  maxDeposit: number;
+  roi: number;
+  roiType: 'daily' | 'weekly' | 'monthly' | 'total';
   duration: number;
-  returns: number;
-  type: 'fixed' | 'flexible';
-  riskLevel: 'low' | 'medium' | 'high';
-  features: string[];
+  durationType: 'hours' | 'days' | 'weeks' | 'months';
+  referralBonus: number;
+  isPopular: boolean;
   isActive: boolean;
-  order: number;
+  features: string[];
+  totalInvestors: number;
+  totalInvested: number;
   createdAt: string;
   updatedAt: string;
 }

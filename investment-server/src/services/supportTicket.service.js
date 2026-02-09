@@ -1,6 +1,9 @@
 const httpStatus = require("http-status");
-const { SupportTicket } = require("../models");
+const { SupportTicket, Transaction } = require("../models");
 const ApiError = require("../utils/ApiError");
+const walletService = require("./wallet.service");
+
+const TICKET_FEE = 1.00; // Fee for creating a support ticket
 
 /**
  * Create a support ticket
@@ -11,6 +14,21 @@ const ApiError = require("../utils/ApiError");
 const createTicket = async (userId, ticketData) => {
   const { subject, category, priority, message } = ticketData;
 
+  // Check if user has sufficient balance
+  const wallet = await walletService.getWalletByUserId(userId);
+
+  if (!wallet) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Wallet not found");
+  }
+
+  if (wallet.balance < TICKET_FEE) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Insufficient balance. Please recharge your wallet to create a support ticket."
+    );
+  }
+
+  // Create the ticket
   const ticket = await SupportTicket.create({
     user: userId,
     subject,
@@ -23,6 +41,24 @@ const createTicket = async (userId, ticketData) => {
         message,
       },
     ],
+  });
+
+  // Deduct ticket fee from wallet
+  wallet.balance -= TICKET_FEE;
+  await wallet.save();
+
+  // Create transaction record for the fee
+  await Transaction.create({
+    user: userId,
+    type: "fee",
+    amount: TICKET_FEE,
+    fee: 0,
+    netAmount: TICKET_FEE,
+    status: "completed",
+    paymentMethod: "wallet",
+    description: `Support ticket fee - ${ticket.ticketId}`,
+    reference: ticket._id,
+    referenceModel: "SupportTicket",
   });
 
   return ticket;

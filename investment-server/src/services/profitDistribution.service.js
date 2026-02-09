@@ -92,9 +92,10 @@ const applyAdjustments = (baseProfit, adjustments) => {
 /**
  * Distribute profit for a single investment
  * @param {ObjectId} investmentId
+ * @param {boolean} testMode - If true, sets next profit date to 1 minute from now
  * @returns {Promise<Object>}
  */
-const distributeProfitForInvestment = async (investmentId) => {
+const distributeProfitForInvestment = async (investmentId, testMode = false) => {
   const investment = await Investment.findById(investmentId).populate("plan");
 
   if (!investment) {
@@ -169,11 +170,18 @@ const distributeProfitForInvestment = async (investmentId) => {
     investment.totalProfitDistributions += 1;
     investment.dailyProfitAmount = dailyProfit;
 
-    // Set next profit date (tomorrow)
+    // Set next profit date
     const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 1);
-    nextDate.setHours(0, 0, 0, 0);
-    investment.nextProfitDate = nextDate;
+    if (testMode) {
+      // TEST MODE: Set next profit date to 1 minute from now
+      nextDate.setMinutes(nextDate.getMinutes() + 1);
+      investment.nextProfitDate = nextDate;
+    } else {
+      // PRODUCTION MODE: Set next profit date to tomorrow at midnight
+      nextDate.setDate(nextDate.getDate() + 1);
+      nextDate.setHours(0, 0, 0, 0);
+      investment.nextProfitDate = nextDate;
+    }
 
     // Check if investment is complete
     if (investment.earnedProfit >= investment.expectedProfit) {
@@ -204,9 +212,10 @@ const distributeProfitForInvestment = async (investmentId) => {
 
 /**
  * Distribute profits for all active investments (Run daily via cron)
+ * @param {boolean} testMode - If true, runs in test mode (1 minute intervals)
  * @returns {Promise<Object>}
  */
-const distributeAllProfits = async () => {
+const distributeAllProfits = async (testMode = false) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -232,7 +241,7 @@ const distributeAllProfits = async () => {
 
   for (const investment of investments) {
     try {
-      const result = await distributeProfitForInvestment(investment._id);
+      const result = await distributeProfitForInvestment(investment._id, testMode);
 
       if (result.success) {
         results.successful++;

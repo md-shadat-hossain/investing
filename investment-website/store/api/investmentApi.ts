@@ -1,40 +1,40 @@
 import { baseApi } from './baseApi';
+import type { InvestmentPlan } from './investmentPlanApi';
 
 interface CreateInvestmentRequest {
   planId: string;
   amount: number;
 }
 
-interface Investment {
+export interface Investment {
   id: string;
-  userId: string;
-  planId: string;
+  user: string;
+  plan: InvestmentPlan;
   amount: number;
-  currentValue: number;
-  profitEarned: number;
-  status: 'active' | 'completed' | 'cancelled';
+  expectedProfit: number;
+  earnedProfit: number;
+  roi: number;
   startDate: string;
-  maturityDate: string;
-  plan?: {
-    id: string;
-    name: string;
-    minInvestment: number;
-    maxInvestment: number;
-    duration: number;
-    returns: number;
-    type: string;
-  };
+  endDate: string;
+  nextProfitDate?: string;
+  lastProfitDate?: string;
+  totalProfitDistributions: number;
+  dailyProfitAmount: number;
+  status: 'active' | 'completed' | 'cancelled' | 'paused';
+  isPaused: boolean;
+  autoReinvest: boolean;
+  transactionId: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface InvestmentStats {
+export interface InvestmentStats {
   totalInvestments: number;
   activeInvestments: number;
-  totalInvested: number;
-  totalProfit: number;
-  currentValue: number;
   completedInvestments: number;
+  totalInvested: number;
+  totalExpectedProfit: number;
+  totalEarnedProfit: number;
 }
 
 interface ApiResponse<T> {
@@ -58,8 +58,11 @@ export const investmentApi = baseApi.injectEndpoints({
     }),
 
     // Get My Investments
-    getMyInvestments: builder.query<ApiResponse<Investment[]>, void>({
-      query: () => '/investments/my',
+    getMyInvestments: builder.query<ApiResponse<Investment[]>, { status?: string }>({
+      query: (params) => ({
+        url: '/investments/my',
+        params,
+      }),
       providesTags: ['Investments'],
     }),
 

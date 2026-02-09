@@ -25,7 +25,9 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { MenuItem } from '@/types';
-import NotificationsDropdown, { Notification } from './NotificationsDropdown';
+import NotificationsDropdown from './NotificationsDropdown';
+import { useGetMyNotificationsQuery, useGetUnreadCountQuery, useMarkAllAsReadMutation, type Notification } from '@/store/api/notificationApi';
+import { useGetWalletQuery } from '@/store/api/walletApi';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,45 +44,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
-  // Mock Notification Data
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'transaction',
-      status: 'success',
-      title: 'Deposit Confirmed',
-      message: 'Your deposit of $2,500.00 via Bitcoin has been successfully credited to your wallet.',
-      time: '2 min ago',
-      read: false
-    },
-    {
-      id: '2',
-      type: 'system',
-      status: 'info',
-      title: 'System Maintenance',
-      message: 'Scheduled maintenance on Oct 28th from 02:00 AM to 04:00 AM UTC. Trading will be paused.',
-      time: '1 hour ago',
-      read: false
-    },
-    {
-      id: '3',
-      type: 'promotion',
-      status: 'warning',
-      title: 'New Plan Available',
-      message: 'Check out our new "Elite Plus" plan with enhanced ROI rates for a limited time.',
-      time: '5 hours ago',
-      read: true
-    },
-    {
-      id: '4',
-      type: 'security',
-      status: 'success',
-      title: 'Password Updated',
-      message: 'Your account password was successfully changed from a new device (Chrome, Windows).',
-      time: '1 day ago',
-      read: true
-    }
-  ]);
+  // Fetch notifications from API
+  const { data: notificationsData } = useGetMyNotificationsQuery();
+  const { data: unreadCountData } = useGetUnreadCountQuery();
+  const { data: walletData } = useGetWalletQuery();
+  const [markAllAsRead] = useMarkAllAsReadMutation();
+
+  const notifications: Notification[] = notificationsData?.data?.attributes || [];
+  const unreadCount = unreadCountData?.data?.attributes?.count || 0;
+  const wallet = walletData?.data?.attributes;
+  const balance = wallet?.balance || 0;
 
   const pathname = usePathname();
 
@@ -131,8 +104,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   };
 
-  const handleMarkAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllAsRead().unwrap();
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
   const menuItems: MenuItem[] = [
@@ -334,7 +311,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             {/* Balance Display */}
             <div className="hidden sm:flex flex-col items-end mr-2">
               <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Current Balance</span>
-              <span className="text-xl font-bold text-green-400">$12,450.00</span>
+              <span className="text-xl font-bold text-green-400">${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
 
             {/* Notification Bell with Dropdown */}
@@ -346,8 +323,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 aria-expanded={showNotifications}
               >
                 <Bell size={20} />
-                {notifications.some(n => !n.read) && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-slate-900 animate-pulse"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
               </button>
 

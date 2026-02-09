@@ -110,6 +110,16 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/support/page.js"
+    ],
+    "/dashboard/support/tickets/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/support/tickets/page.js"
+    ],
+    "/dashboard/support/tickets/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/support/tickets/[id]/page.js"
     ]
   }
 }

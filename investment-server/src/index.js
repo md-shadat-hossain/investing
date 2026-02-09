@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const app = require("./app");
 const config = require("./config/config");
 const logger = require("./config/logger");
+const cronService = require("./services/cron.service");
 
 // My Local IP Address
 const myIp = process.env.BACKEND_IP;
@@ -9,6 +10,13 @@ const myIp = process.env.BACKEND_IP;
 let server;
 mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info("Connected to MongoDB");
+
+  // Start cron jobs for profit distribution
+  // ALWAYS run in TEST MODE (every 1 minute) for now
+  const testMode = true;
+  logger.info(`🧪 Starting cron jobs in TEST MODE - Profit distribution every 1 minute`);
+  cronService.startCronJobs(testMode);
+
   server = app.listen(config.port, myIp, () => {
     // logger.info(`Listening to port ${config.port}`);
     logger.info(`Listening to ip http://${myIp}:${config.port}`);

@@ -27,7 +27,7 @@ interface Ticket {
   userId: string
   subject: string
   category: string
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   rating?: number
   feedback?: string
