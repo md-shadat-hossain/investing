@@ -14,9 +14,9 @@ interface PlanFormData {
   minDeposit: number;
   maxDeposit: number;
   roi: number;
-  roiType: 'daily' | 'weekly' | 'monthly' | 'total';
+  roiType: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'total';
   duration: number;
-  durationType: 'hours' | 'days' | 'weeks' | 'months';
+  durationType: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   referralBonus: number;
   isPopular: boolean;
   isActive: boolean;
@@ -398,6 +398,7 @@ export const InvestmentPlans: React.FC = () => {
                         onChange={e => setFormData({...formData, roiType: e.target.value as any})}
                         className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-navy-500 focus:border-transparent"
                       >
+                        <option value="hourly">Hourly</option>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
@@ -435,6 +436,7 @@ export const InvestmentPlans: React.FC = () => {
                         onChange={e => setFormData({...formData, durationType: e.target.value as any})}
                         className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-navy-500 focus:border-transparent"
                       >
+                        <option value="minutes">Minutes</option>
                         <option value="hours">Hours</option>
                         <option value="days">Days</option>
                         <option value="weeks">Weeks</option>

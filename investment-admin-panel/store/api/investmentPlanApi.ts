@@ -7,9 +7,9 @@ export interface InvestmentPlan {
   minDeposit: number;
   maxDeposit: number;
   roi: number;
-  roiType: 'daily' | 'weekly' | 'monthly' | 'total';
+  roiType: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'total';
   duration: number;
-  durationType: 'hours' | 'days' | 'weeks' | 'months';
+  durationType: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   referralBonus: number;
   isPopular: boolean;
   isActive: boolean;
@@ -26,9 +26,9 @@ export interface CreatePlanRequest {
   minDeposit: number;
   maxDeposit: number;
   roi: number;
-  roiType: 'daily' | 'weekly' | 'monthly' | 'total';
+  roiType: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'total';
   duration: number;
-  durationType: 'hours' | 'days' | 'weeks' | 'months';
+  durationType: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   referralBonus: number;
   isPopular?: boolean;
   isActive?: boolean;

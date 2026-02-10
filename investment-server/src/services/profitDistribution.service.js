@@ -5,34 +5,44 @@ const walletService = require("./wallet.service");
 const transactionService = require("./transaction.service");
 const notificationService = require("./notification.service");
 
+const investmentService = require("./investment.service");
+
+const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+
 /**
- * Calculate daily profit for an investment
+ * Calculate per-interval profit for an investment
+ * Returns the profit amount for one ROI interval (hourly/daily/weekly/monthly)
  * @param {Investment} investment
+ * @param {InvestmentPlan} plan
  * @returns {number}
  */
 const calculateDailyProfit = (investment, plan) => {
-  const { amount, roi, duration } = investment;
+  const { amount } = investment;
   const planRoi = plan.roi;
   const planDuration = plan.duration;
 
-  // Calculate daily profit based on plan's ROI type
-  let dailyProfit = 0;
+  let profit = 0;
 
-  if (plan.roiType === "daily") {
-    // If ROI is daily, use it directly
-    dailyProfit = (amount * planRoi) / 100;
+  if (plan.roiType === "hourly") {
+    // Hourly ROI: profit per hour
+    profit = (amount * planRoi) / 100;
+  } else if (plan.roiType === "daily") {
+    // Daily ROI: profit per day
+    profit = (amount * planRoi) / 100;
   } else if (plan.roiType === "total") {
-    // If ROI is total, divide by duration
-    dailyProfit = (amount * planRoi) / 100 / planDuration;
+    // Total ROI: spread evenly across total duration in days
+    const totalMinutes = investmentService.getDurationInMinutes(plan);
+    const totalDays = totalMinutes / (24 * 60);
+    profit = (amount * planRoi) / 100 / (totalDays || 1);
   } else if (plan.roiType === "monthly") {
-    // Convert monthly to daily (assuming 30 days per month)
-    dailyProfit = (amount * planRoi) / 100 / 30;
+    // Monthly ROI: convert to daily
+    profit = (amount * planRoi) / 100 / 30;
   } else if (plan.roiType === "weekly") {
-    // Convert weekly to daily
-    dailyProfit = (amount * planRoi) / 100 / 7;
+    // Weekly ROI: convert to daily
+    profit = (amount * planRoi) / 100 / 7;
   }
 
-  return dailyProfit;
+  return profit;
 };
 
 /**
@@ -145,7 +155,7 @@ const distributeProfitForInvestment = async (investmentId, testMode = false) => 
     const transaction = await transactionService.createInternalTransaction(investment.user, {
       type: "profit",
       amount: profitToDistribute,
-      description: `Daily profit from ${investment.plan.name} investment`,
+      description: `${capitalize(investment.plan.roiType)} profit from ${investment.plan.name} investment`,
       reference: investment._id,
       referenceModel: "Investment",
     });
@@ -170,16 +180,16 @@ const distributeProfitForInvestment = async (investmentId, testMode = false) => 
     investment.totalProfitDistributions += 1;
     investment.dailyProfitAmount = dailyProfit;
 
-    // Set next profit date
+    // Set next profit date based on ROI interval
     const nextDate = new Date();
     if (testMode) {
       // TEST MODE: Set next profit date to 1 minute from now
       nextDate.setMinutes(nextDate.getMinutes() + 1);
       investment.nextProfitDate = nextDate;
     } else {
-      // PRODUCTION MODE: Set next profit date to tomorrow at midnight
-      nextDate.setDate(nextDate.getDate() + 1);
-      nextDate.setHours(0, 0, 0, 0);
+      // PRODUCTION MODE: Set based on plan's ROI type
+      const intervalMs = investmentService.getProfitIntervalMs(investment.plan.roiType);
+      nextDate.setTime(nextDate.getTime() + intervalMs);
       investment.nextProfitDate = nextDate;
     }
 
@@ -191,9 +201,10 @@ const distributeProfitForInvestment = async (investmentId, testMode = false) => 
     await investment.save();
 
     // Send notification
+    const roiLabel = investment.plan.roiType === "hourly" ? "Hourly" : investment.plan.roiType === "total" ? "Investment" : capitalize(investment.plan.roiType);
     await notificationService.sendToUser(
       investment.user,
-      "Daily Profit Received",
+      `${roiLabel} Profit Received`,
       `You received $${profitToDistribute.toFixed(2)} profit from your ${investment.plan.name} investment.`,
       "investment"
     );
@@ -216,18 +227,18 @@ const distributeProfitForInvestment = async (investmentId, testMode = false) => 
  * @returns {Promise<Object>}
  */
 const distributeAllProfits = async (testMode = false) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
 
   // Find all active investments that need profit distribution
+  // Use current time (not midnight) so hourly/minute intervals are picked up
   const investments = await Investment.find({
     status: "active",
     isPaused: false,
-    startDate: { $lte: today },
-    endDate: { $gte: today },
+    startDate: { $lte: now },
+    endDate: { $gte: now },
     $or: [
       { nextProfitDate: null },
-      { nextProfitDate: { $lte: today } }
+      { nextProfitDate: { $lte: now } }
     ]
   });
 

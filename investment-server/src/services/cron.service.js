@@ -93,57 +93,76 @@ const processDailyProfits = async (testMode = false) => {
 
 /**
  * Start cron jobs
- * @param {boolean} testMode - If true, runs every 1 minute for testing. If false, runs daily at midnight.
+ * @param {boolean} testMode - If true, runs every 1 minute for testing with testMode flag.
  */
 const startCronJobs = (testMode = false) => {
-  // Process completed investments every hour
+  // Process completed investments every 1 minute
+  // Needs to be frequent to handle minute-based and hourly durations
   setInterval(async () => {
-    console.log("Running: Process completed investments");
-    await processCompletedInvestments();
-  }, 60 * 60 * 1000); // Every hour
+    try {
+      await processCompletedInvestments();
+    } catch (error) {
+      console.error("Error in processCompletedInvestments cron:", error);
+    }
+  }, 60 * 1000); // Every 1 minute
 
   if (testMode) {
-    // TEST MODE: Run profit distribution every 1 minute
+    // TEST MODE: Run profit distribution every 1 minute with testMode flag
     console.log("=".repeat(60));
-    console.log("🧪 TEST MODE ENABLED: Profit distribution every 1 MINUTE");
-    console.log("⚠️  This is for TESTING purposes only!");
+    console.log("TEST MODE ENABLED: Profit distribution every 1 MINUTE");
+    console.log("WARNING: This is for TESTING purposes only!");
     console.log("=".repeat(60));
 
     // Run IMMEDIATELY on startup (after 3 seconds)
     setTimeout(async () => {
-      console.log("\n⏰ [TEST MODE] Running profit distribution (Initial run)...");
-      const result = await processDailyProfits(true); // Pass testMode = true
-      console.log(`✅ Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped\n`);
-    }, 3000); // Wait 3 seconds after startup
+      console.log("\n[TEST MODE] Running profit distribution (Initial run)...");
+      const result = await processDailyProfits(true);
+      console.log(`Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped\n`);
+    }, 3000);
 
     // Then run every 1 minute
     setInterval(async () => {
-      console.log("\n⏰ [TEST MODE] Running profit distribution (Every 1 minute)...");
-      const result = await processDailyProfits(true); // Pass testMode = true
-      console.log(`✅ Distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped\n`);
+      try {
+        const result = await processDailyProfits(true);
+        if (result.successful > 0 || result.failed > 0) {
+          console.log(`[TEST MODE] Distribution: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+        }
+      } catch (error) {
+        console.error("[TEST MODE] Profit distribution error:", error);
+      }
     }, 60 * 1000); // Every 1 minute
 
-    console.log("✅ Cron jobs started - Next profit distribution in 3 seconds, then every 1 minute");
+    console.log("Cron jobs started - Profit distribution every 1 minute (test mode)");
     console.log("=".repeat(60) + "\n");
   } else {
-    // PRODUCTION MODE: Process profits every 8 hours
-    const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+    // PRODUCTION MODE: Run profit distribution every 1 minute
+    // Must be frequent to support hourly ROI and minute-based durations
+    // The distributeAllProfits service checks nextProfitDate so only due investments are processed
 
     // Run immediately on startup (after 5 seconds)
     setTimeout(async () => {
-      console.log("⏰ Running profit distribution (Initial run)...");
-      const result = await processDailyProfits();
-      console.log(`✅ Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+      console.log("Running profit distribution (Initial run)...");
+      try {
+        const result = await processDailyProfits();
+        console.log(`Initial distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+      } catch (error) {
+        console.error("Initial profit distribution error:", error);
+      }
     }, 5000);
 
-    // Then run every 8 hours
+    // Then run every 1 minute
     setInterval(async () => {
-      console.log("⏰ Running profit distribution (Every 8 hours)...");
-      const result = await processDailyProfits();
-      console.log(`✅ Distribution complete: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
-    }, EIGHT_HOURS);
+      try {
+        const result = await processDailyProfits();
+        if (result.successful > 0 || result.failed > 0) {
+          console.log(`Profit distribution: ${result.successful} successful, ${result.failed} failed, ${result.skipped} skipped`);
+        }
+      } catch (error) {
+        console.error("Profit distribution error:", error);
+      }
+    }, 60 * 1000); // Every 1 minute
 
-    console.log(`✅ Cron jobs started - Profit distribution every 8 hours`);
+    console.log("Cron jobs started - Profit distribution every 1 minute, completed investments check every 1 minute");
   }
 };
 

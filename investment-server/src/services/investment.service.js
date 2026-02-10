@@ -12,6 +12,8 @@ const investmentPlanService = require("./investmentPlan.service");
 const calculateEndDate = (plan) => {
   const now = new Date();
   switch (plan.durationType) {
+    case "minutes":
+      return new Date(now.getTime() + plan.duration * 60 * 1000);
     case "hours":
       return new Date(now.getTime() + plan.duration * 60 * 60 * 1000);
     case "days":
@@ -26,6 +28,50 @@ const calculateEndDate = (plan) => {
 };
 
 /**
+ * Convert plan duration to total minutes
+ * @param {Object} plan
+ * @returns {number}
+ */
+const getDurationInMinutes = (plan) => {
+  switch (plan.durationType) {
+    case "minutes":
+      return plan.duration;
+    case "hours":
+      return plan.duration * 60;
+    case "days":
+      return plan.duration * 24 * 60;
+    case "weeks":
+      return plan.duration * 7 * 24 * 60;
+    case "months":
+      return plan.duration * 30 * 24 * 60;
+    default:
+      return plan.duration * 24 * 60;
+  }
+};
+
+/**
+ * Get the profit interval in milliseconds based on ROI type
+ * @param {string} roiType
+ * @returns {number} interval in ms
+ */
+const getProfitIntervalMs = (roiType) => {
+  switch (roiType) {
+    case "hourly":
+      return 60 * 60 * 1000; // 1 hour
+    case "daily":
+      return 24 * 60 * 60 * 1000; // 1 day
+    case "weekly":
+      return 7 * 24 * 60 * 60 * 1000; // 1 week
+    case "monthly":
+      return 30 * 24 * 60 * 60 * 1000; // 30 days
+    case "total":
+      return 24 * 60 * 60 * 1000; // distribute daily for total
+    default:
+      return 24 * 60 * 60 * 1000;
+  }
+};
+
+/**
  * Calculate expected profit
  * @param {number} amount
  * @param {Object} plan
@@ -33,16 +79,25 @@ const calculateEndDate = (plan) => {
  */
 const calculateExpectedProfit = (amount, plan) => {
   const roiPercentage = plan.roi / 100;
+  const totalMinutes = getDurationInMinutes(plan);
 
   switch (plan.roiType) {
-    case "daily":
-      return amount * roiPercentage * plan.duration;
-    case "weekly":
-      const weeks = plan.durationType === "weeks" ? plan.duration : plan.duration / 7;
-      return amount * roiPercentage * weeks;
-    case "monthly":
-      const months = plan.durationType === "months" ? plan.duration : plan.duration / 30;
-      return amount * roiPercentage * months;
+    case "hourly": {
+      const totalHours = totalMinutes / 60;
+      return amount * roiPercentage * totalHours;
+    }
+    case "daily": {
+      const totalDays = totalMinutes / (24 * 60);
+      return amount * roiPercentage * totalDays;
+    }
+    case "weekly": {
+      const totalWeeks = totalMinutes / (7 * 24 * 60);
+      return amount * roiPercentage * totalWeeks;
+    }
+    case "monthly": {
+      const totalMonths = totalMinutes / (30 * 24 * 60);
+      return amount * roiPercentage * totalMonths;
+    }
     case "total":
       return amount * roiPercentage;
     default:
@@ -84,22 +139,26 @@ const createInvestment = async (userId, planId, amount) => {
   const expectedProfit = calculateExpectedProfit(amount, plan);
   const endDate = calculateEndDate(plan);
 
-  // Calculate daily profit amount
+  // Calculate per-interval profit amount (stored as dailyProfitAmount for display)
   let dailyProfitAmount = 0;
-  if (plan.roiType === "daily") {
+  if (plan.roiType === "hourly") {
+    dailyProfitAmount = (amount * plan.roi) / 100;
+  } else if (plan.roiType === "daily") {
     dailyProfitAmount = (amount * plan.roi) / 100;
   } else if (plan.roiType === "total") {
-    dailyProfitAmount = (amount * plan.roi) / 100 / plan.duration;
+    const totalMinutes = getDurationInMinutes(plan);
+    const totalDays = totalMinutes / (24 * 60);
+    dailyProfitAmount = (amount * plan.roi) / 100 / (totalDays || 1);
   } else if (plan.roiType === "monthly") {
     dailyProfitAmount = (amount * plan.roi) / 100 / 30;
   } else if (plan.roiType === "weekly") {
     dailyProfitAmount = (amount * plan.roi) / 100 / 7;
   }
 
-  // Set next profit date to tomorrow
+  // Set next profit date based on ROI interval
   const nextProfitDate = new Date();
-  nextProfitDate.setDate(nextProfitDate.getDate() + 1);
-  nextProfitDate.setHours(0, 0, 0, 0);
+  const intervalMs = getProfitIntervalMs(plan.roiType);
+  nextProfitDate.setTime(nextProfitDate.getTime() + intervalMs);
 
   const investment = await Investment.create({
     user: userId,
@@ -215,4 +274,6 @@ module.exports = {
   getUserInvestmentStats,
   calculateExpectedProfit,
   calculateEndDate,
+  getDurationInMinutes,
+  getProfitIntervalMs,
 };

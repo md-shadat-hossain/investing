@@ -30,7 +30,7 @@ const investmentPlanSchema = mongoose.Schema(
     },
     roiType: {
       type: String,
-      enum: ["daily", "weekly", "monthly", "total"],
+      enum: ["hourly", "daily", "weekly", "monthly", "total"],
       default: "daily",
     },
     duration: {
@@ -40,7 +40,7 @@ const investmentPlanSchema = mongoose.Schema(
     },
     durationType: {
       type: String,
-      enum: ["hours", "days", "weeks", "months"],
+      enum: ["minutes", "hours", "days", "weeks", "months"],
       default: "days",
     },
     referralBonus: {
