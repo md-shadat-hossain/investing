@@ -50,6 +50,45 @@ const getDurationInMinutes = (plan) => {
 };
 
 /**
+ * Convert plan duration to total months
+ * @param {Object} plan
+ * @returns {number}
+ */
+const getDurationInMonths = (plan) => {
+  switch (plan.durationType) {
+    case "minutes":
+      return plan.duration / (30 * 24 * 60);
+    case "hours":
+      return plan.duration / (30 * 24);
+    case "days":
+      return plan.duration / 30;
+    case "weeks":
+      return (plan.duration * 7) / 30;
+    case "months":
+      return plan.duration;
+    default:
+      return plan.duration / 30;
+  }
+};
+
+/**
+ * Calculate daily profit for "total" ROI type
+ * Total profit is divided by months, then each month's share is divided by actual days in that month
+ * @param {number} amount - investment amount
+ * @param {number} roi - ROI percentage
+ * @param {Object} plan - investment plan
+ * @returns {number} daily profit amount
+ */
+const calculateTotalRoiDailyProfit = (amount, roi, plan) => {
+  const totalProfit = (amount * roi) / 100;
+  const durationInMonths = getDurationInMonths(plan);
+  const monthlyProfit = totalProfit / (durationInMonths || 1);
+  const now = new Date();
+  const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return monthlyProfit / daysInCurrentMonth;
+};
+
+/**
  * Get the profit interval in milliseconds based on ROI type
  * @param {string} roiType
  * @returns {number} interval in ms
@@ -146,9 +185,7 @@ const createInvestment = async (userId, planId, amount) => {
   } else if (plan.roiType === "daily") {
     dailyProfitAmount = (amount * plan.roi) / 100;
   } else if (plan.roiType === "total") {
-    const totalMinutes = getDurationInMinutes(plan);
-    const totalDays = totalMinutes / (24 * 60);
-    dailyProfitAmount = (amount * plan.roi) / 100 / (totalDays || 1);
+    dailyProfitAmount = calculateTotalRoiDailyProfit(amount, plan.roi, plan);
   } else if (plan.roiType === "monthly") {
     dailyProfitAmount = (amount * plan.roi) / 100 / 30;
   } else if (plan.roiType === "weekly") {
@@ -275,5 +312,7 @@ module.exports = {
   calculateExpectedProfit,
   calculateEndDate,
   getDurationInMinutes,
+  getDurationInMonths,
   getProfitIntervalMs,
+  calculateTotalRoiDailyProfit,
 };

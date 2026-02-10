@@ -22,23 +22,61 @@ const InvestPlans = () => {
   const wallet = walletResponse?.data?.attributes;
   const balance = wallet?.balance || 0;
 
-  const calculateReturns = (amount: number, roi: number, roiType: string, duration: number) => {
-    let totalProfit = 0;
+  const getDurationInMonths = (duration: number, durationType: string) => {
+    switch (durationType) {
+      case 'minutes': return duration / (30 * 24 * 60);
+      case 'hours': return duration / (30 * 24);
+      case 'days': return duration / 30;
+      case 'weeks': return (duration * 7) / 30;
+      case 'months': return duration;
+      default: return duration / 30;
+    }
+  };
 
-    if (roiType === 'daily') {
-      totalProfit = amount * (roi / 100) * duration;
+  const getDurationInDays = (duration: number, durationType: string) => {
+    switch (durationType) {
+      case 'minutes': return duration / (24 * 60);
+      case 'hours': return duration / 24;
+      case 'days': return duration;
+      case 'weeks': return duration * 7;
+      case 'months': return duration * 30;
+      default: return duration;
+    }
+  };
+
+  const calculateReturns = (amount: number, roi: number, roiType: string, duration: number, durationType: string) => {
+    let totalProfit = 0;
+    const totalDays = getDurationInDays(duration, durationType);
+
+    if (roiType === 'hourly') {
+      const totalHours = totalDays * 24;
+      totalProfit = amount * (roi / 100) * totalHours;
+    } else if (roiType === 'daily') {
+      totalProfit = amount * (roi / 100) * totalDays;
     } else if (roiType === 'total') {
       totalProfit = amount * (roi / 100);
     } else if (roiType === 'monthly') {
-      const months = duration / 30;
+      const months = getDurationInMonths(duration, durationType);
       totalProfit = amount * (roi / 100) * months;
     } else if (roiType === 'weekly') {
-      const weeks = duration / 7;
+      const weeks = totalDays / 7;
       totalProfit = amount * (roi / 100) * weeks;
     }
 
     const totalReturn = amount + totalProfit;
-    const daily = totalProfit / duration;
+
+    // Calculate daily profit
+    let daily = 0;
+    if (roiType === 'total') {
+      // For total ROI: divide by months, then by ~30 days per month
+      const durationInMonths = getDurationInMonths(duration, durationType);
+      const monthlyProfit = totalProfit / (durationInMonths || 1);
+      const now = new Date();
+      const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      daily = monthlyProfit / daysInCurrentMonth;
+    } else {
+      daily = totalProfit / (totalDays || 1);
+    }
 
     return { totalReturn, profit: totalProfit, daily };
   };
@@ -120,7 +158,7 @@ const InvestPlans = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => {
-          const { totalReturn, profit, daily } = calculateReturns(plan.minDeposit, plan.roi, plan.roiType, plan.duration);
+          const { totalReturn, profit, daily } = calculateReturns(plan.minDeposit, plan.roi, plan.roiType, plan.duration, plan.durationType);
 
           return (
             <div
@@ -247,7 +285,7 @@ const InvestPlans = () => {
                   <p className="text-emerald-400 text-xs font-medium mb-2">Expected Returns</p>
                   <div className="space-y-1 text-sm">
                     {(() => {
-                      const calc = calculateReturns(parseFloat(amount), selectedPlanData.roi, selectedPlanData.roiType, selectedPlanData.duration);
+                      const calc = calculateReturns(parseFloat(amount), selectedPlanData.roi, selectedPlanData.roiType, selectedPlanData.duration, selectedPlanData.durationType);
                       return (
                         <>
                           <div className="flex justify-between">

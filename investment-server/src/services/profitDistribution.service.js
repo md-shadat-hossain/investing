@@ -30,10 +30,8 @@ const calculateDailyProfit = (investment, plan) => {
     // Daily ROI: profit per day
     profit = (amount * planRoi) / 100;
   } else if (plan.roiType === "total") {
-    // Total ROI: spread evenly across total duration in days
-    const totalMinutes = investmentService.getDurationInMinutes(plan);
-    const totalDays = totalMinutes / (24 * 60);
-    profit = (amount * planRoi) / 100 / (totalDays || 1);
+    // Total ROI: divide total profit by months, then by actual days in current month
+    profit = investmentService.calculateTotalRoiDailyProfit(amount, planRoi, plan);
   } else if (plan.roiType === "monthly") {
     // Monthly ROI: convert to daily
     profit = (amount * planRoi) / 100 / 30;
