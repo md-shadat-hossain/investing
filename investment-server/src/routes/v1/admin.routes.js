@@ -20,6 +20,8 @@ router.post("/users/:userId/block", validate(adminValidation.toggleUserBlock), a
 router.post("/users/:userId/kyc", validate(adminValidation.updateKycStatus), adminController.updateKycStatus);
 router.post("/users/:userId/add-balance", validate(adminValidation.addUserBalance), adminController.addUserBalance);
 router.post("/users/:userId/deduct-balance", validate(adminValidation.deductUserBalance), adminController.deductUserBalance);
+router.patch("/users/:userId", validate(adminValidation.updateUserProfile), adminController.updateUserProfile);
+router.post("/users/:userId/reset-password", validate(adminValidation.resetUserPassword), adminController.resetUserPassword);
 router.delete("/users/:userId", validate(adminValidation.deleteUser), adminController.deleteUser);
 
 module.exports = router;

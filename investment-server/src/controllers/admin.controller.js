@@ -317,6 +317,80 @@ const getRecentActivities = catchAsync(async (req, res) => {
   );
 });
 
+// Update user profile (admin)
+const updateUserProfile = catchAsync(async (req, res) => {
+  const user = await User.findById(req.params.userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  const { firstName, lastName, email, phoneNumber, callingCode, address } = req.body;
+
+  // Check email uniqueness if email is being changed
+  if (email && email !== user.email) {
+    const existingUser = await User.findOne({ email, _id: { $ne: user._id } });
+    if (existingUser) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Email is already taken");
+    }
+    user.email = email;
+  }
+
+  if (firstName !== undefined) user.firstName = firstName;
+  if (lastName !== undefined) user.lastName = lastName;
+  if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+  if (callingCode !== undefined) user.callingCode = callingCode;
+  if (address !== undefined) user.address = address;
+
+  await user.save();
+
+  // Notify user
+  await notificationService.sendToUser(
+    user._id,
+    "Profile Updated",
+    "Your profile has been updated by an administrator.",
+    "security"
+  );
+
+  res.status(httpStatus.OK).json(
+    response({
+      message: "User profile updated successfully",
+      status: "OK",
+      statusCode: httpStatus.OK,
+      data: user,
+    })
+  );
+});
+
+// Reset user password (admin)
+const resetUserPassword = catchAsync(async (req, res) => {
+  const { newPassword } = req.body;
+  const user = await User.findById(req.params.userId);
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  // Notify user
+  await notificationService.sendToUser(
+    user._id,
+    "Password Reset",
+    "Your password has been reset by an administrator. Please contact support if you did not request this change.",
+    "security"
+  );
+
+  res.status(httpStatus.OK).json(
+    response({
+      message: "User password reset successfully",
+      status: "OK",
+      statusCode: httpStatus.OK,
+      data: {},
+    })
+  );
+});
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -327,4 +401,6 @@ module.exports = {
   deductUserBalance,
   deleteUser,
   getRecentActivities,
+  updateUserProfile,
+  resetUserPassword,
 };

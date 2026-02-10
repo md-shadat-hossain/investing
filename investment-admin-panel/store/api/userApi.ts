@@ -87,6 +87,25 @@ export const userApi = baseApi.injectEndpoints({
       invalidatesTags: ['Users'],
     }),
 
+    // Admin update user profile
+    adminUpdateUser: builder.mutation<any, { userId: string; firstName?: string; lastName?: string; email?: string; phoneNumber?: string; callingCode?: string; address?: string }>({
+      query: ({ userId, ...body }) => ({
+        url: `/admin/users/${userId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Users'],
+    }),
+
+    // Admin reset user password
+    adminResetPassword: builder.mutation<any, { userId: string; newPassword: string }>({
+      query: ({ userId, newPassword }) => ({
+        url: `/admin/users/${userId}/reset-password`,
+        method: 'POST',
+        body: { newPassword },
+      }),
+    }),
+
     // Update profile (with optional image)
     updateProfile: builder.mutation<any, FormData>({
       query: (formData) => ({
@@ -148,4 +167,6 @@ export const {
   useAddBalanceMutation,
   useDeductBalanceMutation,
   useDeleteUserMutation,
+  useAdminUpdateUserMutation,
+  useAdminResetPasswordMutation,
 } = userApi;

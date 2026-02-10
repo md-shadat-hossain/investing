@@ -74,6 +74,35 @@ const getRecentActivities = {
   }),
 };
 
+const updateUserProfile = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId),
+  }),
+  body: Joi.object()
+    .keys({
+      firstName: Joi.string().trim().min(1).max(50),
+      lastName: Joi.string().trim().min(1).max(50),
+      email: Joi.string().email(),
+      phoneNumber: Joi.string().trim().allow("", null),
+      callingCode: Joi.string().trim().allow("", null),
+      address: Joi.string().trim().allow("", null),
+    })
+    .min(1),
+};
+
+const resetUserPassword = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId),
+  }),
+  body: Joi.object().keys({
+    newPassword: Joi.string()
+      .required()
+      .min(8)
+      .pattern(/^(?=.*[a-zA-Z])(?=.*\d)/)
+      .message("Password must be at least 8 characters and contain both letters and numbers"),
+  }),
+};
+
 module.exports = {
   getAllUsers,
   getUserDetails,
@@ -83,4 +112,6 @@ module.exports = {
   deductUserBalance,
   deleteUser,
   getRecentActivities,
+  updateUserProfile,
+  resetUserPassword,
 };

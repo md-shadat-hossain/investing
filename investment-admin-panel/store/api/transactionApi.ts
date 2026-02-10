@@ -25,6 +25,7 @@ export const transactionApi = baseApi.injectEndpoints({
       limit?: number;
       type?: string;
       status?: string;
+      user?: string;
     }>({
       query: (params) => ({
         url: '/transactions/admin/all',
