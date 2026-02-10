@@ -154,11 +154,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-slate-50 flex font-sans relative">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-navy-900 text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
+        fixed inset-y-0 left-0 z-40 w-72 bg-navy-900 text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         ${!isAuthenticated ? 'blur-sm pointer-events-none select-none' : ''}
       `}>
-        <div className="h-full flex flex-col p-6">
+        <div className="h-full flex flex-col p-6 overflow-y-auto custom-scrollbar">
           <div className="flex items-center gap-3 mb-10 px-2">
             <div className="w-10 h-10 bg-gradient-to-br from-gold-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-gold-500/20">
               <ShieldCheck className="text-white" size={24} />
@@ -214,7 +214,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 relative">
+      <main className="flex-1 flex flex-col min-w-0 relative lg:ml-72">
         {/* Header */}
         <header className={`h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-10 sticky top-0 z-30 ${!isAuthenticated ? 'blur-sm pointer-events-none select-none' : ''}`}>
           <button 
